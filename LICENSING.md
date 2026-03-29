@@ -3,7 +3,7 @@
 This project is available under two licenses:
 
 1. **Apache License 2.0** - For open-source use (free)
-2. **Proprietary Commercial License** - For enterprises with premium support
+2. **Proprietary Commercial License** - For businesses ($99-999/year)
 
 ## Apache 2.0 (Open Source)
 
@@ -12,6 +12,7 @@ Use this license if you:
 - Want to contribute to the community
 - Are using it internally
 - Don't need commercial support
+- Want to avoid licensing fees
 
 See [LICENSE](./LICENSE) for full terms.
 
@@ -19,21 +20,22 @@ See [LICENSE](./LICENSE) for full terms.
 
 Use this license if you:
 - Are building commercial products
-- Need dedicated support and SLA guarantees
-- Want legal indemnification
-- Need custom features or modifications
+- Want priority support
+- Need legal indemnification
+- Want to support the developer
 
 **Pricing:**
-- Startup: $2,999/year
-- Professional: $9,999/year
-- Enterprise: Custom quote
+- Startup: $99/year (up to 5 deployments)
+- Professional: $499/year (up to 25 deployments)
+- Enterprise: Custom quote (unlimited)
 
 **Includes:**
-- Dedicated support (24/7 for Enterprise)
-- SLA guarantees (99.9% uptime)
-- Custom feature development
-- Legal indemnification
-- Compliance support (HIPAA, GDPR, SOC 2)
+- Priority email support (best-effort)
+- Indemnification for unmodified software
+- Commercial use rights
+- Quarterly consulting calls (Professional+)
+
+**Important:** This is a solo project. Support is best-effort, not guaranteed SLAs. I'm one person building this as a passion project, so please set realistic expectations.
 
 For commercial licensing inquiries:
 📧 licensing@helixcollective.io
