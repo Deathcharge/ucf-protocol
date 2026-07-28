@@ -38,8 +38,9 @@ Use this license if you:
 **Important:** This is a solo project. Support is best-effort, not guaranteed SLAs. I'm one person building this as a passion project, so please set realistic expectations.
 
 For commercial licensing inquiries:
-📧 licensing@helixcollective.io
+📧 contact@samsarix.com
 
 ---
 
-See the main [helix-orchestration](https://github.com/Deathcharge/helix-orchestration) repository for complete licensing documentation.
+The controlling proprietary terms for this repository are in
+[LICENSE.PROPRIETARY](./LICENSE.PROPRIETARY).

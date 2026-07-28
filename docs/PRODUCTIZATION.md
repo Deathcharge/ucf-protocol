@@ -60,9 +60,8 @@ The journey must also handle an empty journal, invalid/non-finite metrics, dupli
 - The repository does not need authentication because the supported product opens no network listener and operates only with the invoking user's filesystem privileges.
 - Metadata may contain private user content, so the product will not transmit it or enable telemetry by default.
 - Existing licensing files express owner intent but contain positioning that needs owner/legal confirmation before publication; this work does not select or rewrite legal terms.
-- Samsarix is the current maintainer brand. `contact@samsarix.com` and
-  `support@samsarix.com` are owner-confirmed working contact channels; legacy legal files retain
-  Helix names until the legal licensor identity is explicitly confirmed.
+- Samsarix is the current maintainer brand and Samsarix LLC is the owner-confirmed company name.
+  `contact@samsarix.com` and `support@samsarix.com` are owner-confirmed working contact channels.
 
 ## Baseline command results
 
@@ -146,9 +145,9 @@ There were no real repository lint, format, or type-check configurations to run 
 - Removed 15,000+ lines of dead modules, placeholders, unrelated infrastructure guides, and unsupported examples while preserving legal and repository instruction files.
 - Added pinned least-privilege CI across Python 3.10-3.14, dependency update configuration, and a distribution smoke job.
 - Rewrote product, API, metrics, architecture, operations, security, contribution, community, and ethical guidance to match implemented behavior.
-- Updated package and community ownership to Samsarix, configured private security and conduct
-  reporting through the owner-confirmed mailboxes, and retained legacy legal names for explicit
-  owner/legal reconciliation.
+- Updated package and community ownership to the Samsarix brand and Samsarix LLC legal company,
+  configured private security and conduct reporting through the owner-confirmed mailboxes, and
+  removed obsolete Helix licensing contacts without changing substantive license terms.
 - Built and inspected the sdist and wheel from an isolated build, validated both with Twine, and installed the exact wheel into a clean virtual environment.
 - Completed a standard repository-wide security scan over all 36 final files. One local export race candidate was validated and suppressed because no privilege or tenant boundary exists; no reportable vulnerability or deferred security work remained. The canonical scan report is outside the repository under the system temporary security-scan directory and is linked in the delivery handoff.
 
@@ -194,8 +193,6 @@ documented through the working Samsarix mailboxes.
 - Confirm public licensing positioning across `LICENSE`, `LICENSE.PROPRIETARY`, and `LICENSING.md` with the owner/legal counsel.
 - Decide whether and where to publish the distribution; configure PyPI trusted publishing if desired.
 - Create signing/provenance policy and release credentials if public artifacts will be signed.
-- Confirm whether the legal licensor named in `LICENSE.PROPRIETARY` and `LICENSING.md` should remain
-  Helix Collective or be formally changed to Samsarix; do not treat branding alone as legal approval.
 
 ## Known risks
 

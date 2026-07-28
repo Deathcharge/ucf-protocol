@@ -8,9 +8,10 @@ and phase, stores observations in SQLite, and exports versioned JSON Lines.
 
 It runs without an account, network service, or third-party runtime dependency.
 
-UCF Protocol is maintained by Samsarix. General product inquiries can be sent to
-`contact@samsarix.com`; support requests can be sent to `support@samsarix.com`. Report suspected
-vulnerabilities through the private process in [SECURITY.md](SECURITY.md), not a public issue.
+UCF Protocol is maintained by Samsarix LLC under the Samsarix brand. General product inquiries can
+be sent to `contact@samsarix.com`; support requests can be sent to `support@samsarix.com`. Report
+suspected vulnerabilities through the private process in [SECURITY.md](SECURITY.md), not a public
+issue.
 
 > UCF signals are subjective, user-supplied operational assessments. They are not scientific
 > measurements of consciousness, medical or psychological measures, or replacements for logs,
