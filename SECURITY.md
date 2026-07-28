@@ -10,9 +10,9 @@ claimed to receive fixes.
 
 Do not open a public issue for a vulnerability or attach private journal contents, credentials, or
 personal data to an issue. Use GitHub's private vulnerability-reporting feature for this repository
-if it is enabled. If it is not available, contact the repository owner through an established private
-channel and include only the minimum reproduction needed. The project does not yet promise a response
-SLA; establishing a durable private contact and response policy is a gate for general availability.
+if it is enabled. Otherwise, email `support@samsarix.com` with the subject `UCF security report` and
+include only the minimum reproduction needed. This mailbox is the private reporting channel unless a
+future release names a dedicated security address. The project does not promise a response-time SLA.
 
 Please include the affected version, platform and Python version, impact, prerequisites, a minimal
 reproduction, and any suggested remediation. Give maintainers a reasonable opportunity to validate
@@ -65,5 +65,6 @@ available.
 
 ## Out of scope
 
-Security claims about hosted Helix APIs, dashboards, Discord bots, Redis, cloud platforms, or other
-repositories are out of scope. They are not part of this product or security boundary.
+Security claims about hosted services under either the legacy Helix name or the current Samsarix
+brand, including APIs, dashboards, bots, data stores, cloud platforms, or other repositories, are out
+of scope. They are not part of this product or security boundary.

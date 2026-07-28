@@ -19,6 +19,8 @@ This project follows [Semantic Versioning](https://semver.org/). Dates use ISO 8
 - Unified all metrics to finite values in `[0, 1]` and documented the score and phase formulas.
 - Reframed UCF as subjective coordination-health observations rather than consciousness measurement.
 - Replaced legacy flat modules and hosted-service examples with a coherent local product surface.
+- Updated the maintainer brand to Samsarix and documented working private support and conduct
+  channels.
 
 ### Removed
 
@@ -27,5 +29,5 @@ This project follows [Semantic Versioning](https://semver.org/). Dates use ISO 8
 
 ### Release note
 
-This is a release candidate. Publication, signing, support-channel, and license-positioning decisions
-remain maintainer-controlled gates.
+This is a release candidate. Publication, signing, and license-positioning decisions remain
+maintainer-controlled gates.

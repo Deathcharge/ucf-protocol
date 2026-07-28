@@ -24,7 +24,7 @@ UCF Protocol will be a local-first Python protocol, library, and CLI for recordi
 2. validate observations strictly and calculate a transparent phase and composite score;
 3. persist observations in a local SQLite journal with duplicate-event protection;
 4. let a user record, inspect, validate, list, and export observations through the `ucf` CLI;
-5. work without Helix services, accounts, credentials, network access, or third-party runtime packages.
+5. work without hosted Samsarix or legacy Helix services, accounts, credentials, network access, or third-party runtime packages.
 
 The signals are user-supplied operational assessments, not scientific measurements of consciousness and not substitutes for service-level telemetry. This limitation is part of the product contract.
 
@@ -60,6 +60,9 @@ The journey must also handle an empty journal, invalid/non-finite metrics, dupli
 - The repository does not need authentication because the supported product opens no network listener and operates only with the invoking user's filesystem privileges.
 - Metadata may contain private user content, so the product will not transmit it or enable telemetry by default.
 - Existing licensing files express owner intent but contain positioning that needs owner/legal confirmation before publication; this work does not select or rewrite legal terms.
+- Samsarix is the current maintainer brand. `contact@samsarix.com` and
+  `support@samsarix.com` are owner-confirmed working contact channels; legacy legal files retain
+  Helix names until the legal licensor identity is explicitly confirmed.
 
 ## Baseline command results
 
@@ -143,6 +146,9 @@ There were no real repository lint, format, or type-check configurations to run 
 - Removed 15,000+ lines of dead modules, placeholders, unrelated infrastructure guides, and unsupported examples while preserving legal and repository instruction files.
 - Added pinned least-privilege CI across Python 3.10-3.14, dependency update configuration, and a distribution smoke job.
 - Rewrote product, API, metrics, architecture, operations, security, contribution, community, and ethical guidance to match implemented behavior.
+- Updated package and community ownership to Samsarix, configured private security and conduct
+  reporting through the owner-confirmed mailboxes, and retained legacy legal names for explicit
+  owner/legal reconciliation.
 - Built and inspected the sdist and wheel from an isolated build, validated both with Twine, and installed the exact wheel into a clean virtual environment.
 - Completed a standard repository-wide security scan over all 36 final files. One local export race candidate was validated and suppressed because no privilege or tenant boundary exists; no reportable vulnerability or deferred security work remained. The canonical scan report is outside the repository under the system temporary security-scan directory and is linked in the delivery handoff.
 
@@ -173,8 +179,9 @@ collect after review rather than a locally claimed pass.
 The repository is locally ready for review as `1.0.0rc1`: the primary journey, failure paths,
 distribution, metadata, installed wheel, example, and security scan are evidenced. It is not ready
 for public general availability or package publication until the owner resolves the license
-positioning, establishes durable private security/conduct contacts, reviews and merges the changes,
-runs hosted CI across the supported matrix, and intentionally configures publishing/signing.
+positioning, reviews and merges the changes, runs hosted CI across the supported matrix, and
+intentionally configures publishing/signing. Durable private security and conduct contacts are now
+documented through the working Samsarix mailboxes.
 
 ## Deferred work and rationale
 
@@ -187,7 +194,8 @@ runs hosted CI across the supported matrix, and intentionally configures publish
 - Confirm public licensing positioning across `LICENSE`, `LICENSE.PROPRIETARY`, and `LICENSING.md` with the owner/legal counsel.
 - Decide whether and where to publish the distribution; configure PyPI trusted publishing if desired.
 - Create signing/provenance policy and release credentials if public artifacts will be signed.
-- Choose the support and security-reporting channels before a public general-availability release.
+- Confirm whether the legal licensor named in `LICENSE.PROPRIETARY` and `LICENSING.md` should remain
+  Helix Collective or be formally changed to Samsarix; do not treat branding alone as legal approval.
 
 ## Known risks
 

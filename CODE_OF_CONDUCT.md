@@ -50,9 +50,9 @@ currently promise response-time SLAs or claim an appeals committee that has not 
 ## Reporting
 
 Do not put private personal details in a public issue. Report conduct concerns to the repository owner
-through an established private channel shown on their verified GitHub profile. A dedicated,
-maintainer-controlled conduct address and response policy must be configured before the project is
-presented as a broadly supported public community.
+at `contact@samsarix.com` with the subject `UCF conduct report`. This is a private,
+maintainer-controlled channel. The project does not promise a response-time SLA or continuous
+coverage.
 
 Include the relevant links or dates, a factual description, impact, and the minimum evidence needed.
 Reports should be handled confidentially to the extent practical and lawful. Good-faith reporters and

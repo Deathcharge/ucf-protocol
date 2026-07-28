@@ -54,7 +54,6 @@ This repository intentionally has CI but no automated package-publication workfl
 general-availability release, maintainers must:
 
 - reconcile the Apache, proprietary, and commercial licensing files with owner/legal counsel;
-- choose and configure a private security-reporting channel;
 - approve the package name, version, support policy, and release notes;
 - configure trusted publishing and artifact signing/provenance if desired;
 - create the release and verify the published artifact from an unrelated clean environment.

@@ -1,6 +1,6 @@
 # Tony Accords: project values
 
-The Tony Accords capture the Helix Collective's ethical intent. In this repository they are design
+The Tony Accords capture Samsarix's ethical intent. In this repository they are design
 values, not an automated enforcement, monitoring, consensus, or consciousness system.
 
 ## Four values
