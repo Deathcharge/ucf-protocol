@@ -149,6 +149,8 @@ There were no real repository lint, format, or type-check configurations to run 
   configured private security and conduct reporting through the owner-confirmed mailboxes, and
   removed obsolete Helix licensing contacts without changing substantive license terms.
 - Built and inspected the sdist and wheel from an isolated build, validated both with Twine, and installed the exact wheel into a clean virtual environment.
+- Published the productization commits to draft pull request #6 and passed the hosted GitHub Actions
+  matrix on Python 3.10 through 3.14 plus the distribution smoke job.
 - Completed a standard repository-wide security scan over all 36 final files. One local export race candidate was validated and suppressed because no privilege or tenant boundary exists; no reportable vulnerability or deferred security work remained. The canonical scan report is outside the repository under the system temporary security-scan directory and is linked in the delivery handoff.
 
 ## Final local verification
@@ -169,18 +171,20 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | Installed record/status/export/schema journey | Passed against a fresh SQLite journal. |
 | `python examples/basic_journey.py` | Passed using the installed public API. |
 
-The checked-in CI workflow repeats the meaningful checks on Python 3.10 through 3.14. It has not run
-on GitHub for this unpushed worktree, so cross-version hosted results remain external evidence to
-collect after review rather than a locally claimed pass.
+## Hosted verification
+
+GitHub Actions run `30413304310` for draft pull request #6 passed the distribution smoke job and all
+five supported interpreters: Python 3.10, 3.11, 3.12, 3.13, and 3.14. CodeRabbit reported success
+with its review intentionally skipped while the pull request remains a draft.
 
 ## Release disposition
 
 The repository is locally ready for review as `1.0.0rc1`: the primary journey, failure paths,
 distribution, metadata, installed wheel, example, and security scan are evidenced. It is not ready
 for public general availability or package publication until the owner resolves the license
-positioning, reviews and merges the changes, runs hosted CI across the supported matrix, and
-intentionally configures publishing/signing. Durable private security and conduct contacts are now
-documented through the working Samsarix mailboxes.
+positioning, reviews and merges the changes, and intentionally configures publishing/signing. Durable
+private security and conduct contacts are documented through the working Samsarix mailboxes, and the
+hosted supported-Python CI matrix has passed.
 
 ## Deferred work and rationale
 
