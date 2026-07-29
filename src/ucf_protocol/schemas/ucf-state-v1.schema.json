@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Deathcharge/ucf-protocol/schemas/ucf-state-v1.schema.json",
+  "title": "UCF v1 observation",
+  "description": "A point-in-time, user-supplied coordination-health observation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "timestamp",
+    "phase",
+    "score",
+    "metrics",
+    "context",
+    "agent",
+    "metadata"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ucf/v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "phase": {
+      "enum": ["CRITICAL", "UNSTABLE", "COHERENT", "HARMONIOUS", "TRANSCENDENT"]
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["harmony", "resilience", "throughput", "focus", "friction", "velocity"],
+      "properties": {
+        "harmony": {"type": "number", "minimum": 0, "maximum": 1},
+        "resilience": {"type": "number", "minimum": 0, "maximum": 1},
+        "throughput": {"type": "number", "minimum": 0, "maximum": 1},
+        "focus": {"type": "number", "minimum": 0, "maximum": 1},
+        "friction": {"type": "number", "minimum": 0, "maximum": 1},
+        "velocity": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "context": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "agent": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "metadata": {
+      "type": "object",
+      "maxProperties": 256
+    }
+  }
+}

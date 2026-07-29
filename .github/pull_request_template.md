@@ -1,26 +1,33 @@
-## Description
-<!-- Describe your changes in detail -->
+## Purpose
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
+Describe the user-visible outcome and why this change belongs in the local UCF core.
 
-## Testing
-<!-- Describe the tests you ran to verify your changes -->
-- [ ] Tested against live system
-- [ ] Code examples verified
-- [ ] Documentation links checked
+## Contract impact
 
-## Checklist
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] Any dependent changes have been merged and published
+- [ ] No public contract change
+- [ ] Additive API or documentation change
+- [ ] Breaking `ucf/v1`, CLI, storage, or Python API change (explain migration below)
 
-## Related Issues
-<!-- Link any related issues here -->
+## Verification
+
+- [ ] `ruff format --check src tests examples`
+- [ ] `ruff check src tests examples`
+- [ ] `mypy src`
+- [ ] `pytest`
+- [ ] Distribution built and checked when packaging changed
+- [ ] Shipped examples executed when behavior changed
+- [ ] Documentation and changelog updated
+
+## Security and data
+
+- [ ] Untrusted input and failure paths are tested
+- [ ] No secrets, private journal data, network behavior, or telemetry were added silently
+- [ ] Security implications are described here or marked not applicable
+
+## Migration and rollback
+
+Describe any schema, operator, or compatibility steps. Write "None" when not applicable.
+
+## Related issue
+
 Closes #

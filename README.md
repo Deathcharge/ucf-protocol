@@ -1,93 +1,122 @@
-# ucf-protocol
+# UCF Protocol
 
-Universal Consciousness Framework (UCF) protocol implementation. Tracks consciousness metrics (harmony, resilience, prana, drishti, klesha) and manages consciousness state.
+[![CI](https://github.com/Deathcharge/ucf-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/Deathcharge/ucf-protocol/actions/workflows/ci.yml)
 
-## 🎯 Overview
+UCF Protocol is a local-first Python library and command-line tool for recording explicit
+coordination-health observations. It validates six normalized signals, derives a transparent score
+and phase, stores observations in SQLite, and exports versioned JSON Lines.
 
-This repository is part of the [Helix Collective](https://github.com/Deathcharge/helix-platform), a comprehensive ecosystem for building intelligent, multi-agent systems with consciousness frameworks and advanced LLM integration.
+It runs without an account, network service, or third-party runtime dependency.
 
-## 🚀 Quick Start
+UCF Protocol is maintained by Samsarix LLC under the Samsarix brand. General product inquiries can
+be sent to `contact@samsarix.com`; support requests can be sent to `support@samsarix.com`. Report
+suspected vulnerabilities through the private process in [SECURITY.md](SECURITY.md), not a public
+issue.
 
-### Installation
+> UCF signals are subjective, user-supplied operational assessments. They are not scientific
+> measurements of consciousness, medical or psychological measures, or replacements for logs,
+> traces, service-level indicators, and other objective telemetry.
 
-\`\`\`bash
-git clone https://github.com/Deathcharge/ucf-protocol.git
-cd ucf-protocol
-pip install -r requirements.txt
-\`\`\`
+## Install from this checkout
 
-### Basic Usage
+Python 3.10 or newer is required. Use a virtual environment:
 
-See the [examples/](examples/) directory for working examples and integration patterns.
+```console
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+python -m pip install .
+ucf --version
+```
 
-## 📚 Documentation
+The current version is a release candidate. This repository does not publish automatically.
 
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and components
-- **[API Reference](docs/API.md)** - Complete API documentation
-- **[Integration Guide](docs/INTEGRATION.md)** - How to integrate with other Helix repos
-- **[Deployment](docs/DEPLOYMENT.md)** - Production deployment guide
-- **[Contributing](CONTRIBUTING.md)** - How to contribute
+## Complete first journey
 
-## 🔗 Related Repositories
+Record an observation in an explicitly chosen local journal:
 
-- **[helix-platform](https://github.com/Deathcharge/helix-platform)** - Central hub and integration guide
-- **[helix-unified](https://github.com/Deathcharge/helix-unified)** - Main unified codebase
-- **[helix-core](https://github.com/Deathcharge/helix-core)** - Core utilities and LLM integration
+```console
+ucf --database ucf-demo.db record \
+  --event-id release-check-1 \
+  --harmony 0.65 \
+  --resilience 0.72 \
+  --throughput 0.70 \
+  --focus 0.80 \
+  --friction 0.18 \
+  --velocity 0.62 \
+  --context "pre-release review" \
+  --agent "operator"
+```
 
-See [HELIX_REPOSITORY_INDEX.md](https://github.com/Deathcharge/helix-platform/blob/main/HELIX_REPOSITORY_INDEX.md) for the complete ecosystem map.
+PowerShell accepts the same command on one line. Then inspect and export it:
 
-## 🧪 Testing
+```console
+ucf --database ucf-demo.db status
+ucf --database ucf-demo.db history --json
+ucf --database ucf-demo.db summary
+ucf --database ucf-demo.db export --output observations.jsonl
+```
 
-Run tests with pytest:
+`init` is optional because every journal command initializes the database safely. Running
+`status` against an empty journal returns an actionable message and exit code 3. Run
+`ucf <command> --help` for command-specific options.
 
-\`\`\`bash
-pytest tests/ -v --cov=src
-\`\`\`
+## Python API
 
-## 🔄 CI/CD
+```python
+from ucf_protocol import MetricSet, UCFJournal, UCFState
 
-This repository uses GitHub Actions for:
-- ✅ Automated testing (Python 3.9, 3.10, 3.11)
-- ✅ Code linting (flake8)
-- ✅ Type checking (mypy)
-- ✅ Security scanning (bandit, safety)
-- ✅ Coverage reporting (Codecov)
+observation = UCFState(
+    metrics=MetricSet(
+        harmony=0.65,
+        resilience=0.72,
+        throughput=0.70,
+        focus=0.80,
+        friction=0.18,
+        velocity=0.62,
+    ),
+    event_id="release-check-1",
+    context="pre-release review",
+    agent="operator",
+)
 
-See [.github/workflows/ci.yml](.github/workflows/ci.yml) for details.
+with UCFJournal("ucf-demo.db") as journal:
+    journal.record(observation)
+    latest = journal.latest()
+    assert latest is not None
+    print(latest.to_json())
+```
 
-## 📋 Requirements
+All six metrics must be finite numbers in `[0, 1]`. Lower friction is better; the other five
+signals are positive. The exchange contract is `ucf/v1`; its JSON Schema ships inside the wheel.
 
-- Python 3.9+
-- Dependencies listed in requirements.txt
-- Development dependencies in requirements-dev.txt
+## Documentation
 
-## 🤝 Contributing
+- [Quick start](docs/QUICKSTART.md)
+- [Metric and scoring contract](UCF_METRICS.md)
+- [CLI and Python API](docs/API.md)
+- [Architecture and trust boundaries](docs/ARCHITECTURE.md)
+- [Local operation and release](docs/DEPLOYMENT.md)
+- [Security policy](SECURITY.md)
+- [Productization evidence](docs/PRODUCTIZATION.md)
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Development setup
-- Code style guide
-- Testing requirements
-- Pull request process
+## Development
 
-## 📄 License
+```console
+python -m pip install -e ".[dev]"
+ruff format --check src tests examples
+ruff check src tests examples
+mypy src
+pytest
+python -m build
+python -m twine check dist/*
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for compatibility and change requirements.
 
-## 🆘 Support
+## License and release status
 
-- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/Deathcharge/ucf-protocol/issues)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/Deathcharge/ucf-protocol/discussions)
-- **Documentation**: See the [docs/](docs/) directory
-- **Ecosystem**: Visit [helix-platform](https://github.com/Deathcharge/helix-platform)
-
-## 🎓 Learn More
-
-- [Helix Collective Repository Index](https://github.com/Deathcharge/helix-platform/blob/main/HELIX_REPOSITORY_INDEX.md)
-- [Architecture Guide](https://github.com/Deathcharge/helix-platform/blob/main/docs/ARCHITECTURE.md)
-- [Integration Examples](https://github.com/Deathcharge/helix-platform/tree/main/examples)
-
----
-
-**Status**: ✅ Production Ready  
-**Last Updated**: June 17, 2026  
-**Maintainer**: Helix Collective Contributors
+Package metadata identifies the reusable Python core as Apache-2.0; see [LICENSE](LICENSE).
+The repository also contains pre-existing [commercial licensing guidance](LICENSING.md) and a
+[proprietary license](LICENSE.PROPRIETARY). Their public-release positioning requires owner/legal
+confirmation and is not resolved by this technical release candidate.
