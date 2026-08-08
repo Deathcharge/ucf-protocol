@@ -147,6 +147,12 @@ def test_validate_rejects_oversized_and_malformed_input(tmp_path) -> None:
     assert code == EXIT_INVALID
     assert "invalid JSON" in stderr
 
+    invalid_utf8 = tmp_path / "invalid-utf8.json"
+    invalid_utf8.write_bytes(b"\xff")
+    code, _, stderr = invoke(["validate", str(invalid_utf8)])
+    assert code == EXIT_INVALID
+    assert "could not read" in stderr
+
 
 def test_export_is_jsonl_and_does_not_overwrite_without_force(tmp_path) -> None:
     path = tmp_path / "journal.db"

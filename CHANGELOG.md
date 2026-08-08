@@ -21,6 +21,11 @@ This project follows [Semantic Versioning](https://semver.org/). Dates use ISO 8
 - Replaced legacy flat modules and hosted-service examples with a coherent local product surface.
 - Updated the maintainer brand to Samsarix, identified Samsarix LLC as the legal company, and
   documented working private support and conduct channels.
+- Aligned the parser and packaged schema required fields and added drift tests for phase definitions.
+- Made file validation and journal export bounded across path replacement and partial iteration.
+- Clarified that Apache-2.0 permits commercial use and that Samsarix commercial services or
+  alternative terms are optional.
+- Disabled persisted checkout credentials in CI jobs that install repository-controlled code.
 
 ### Removed
 

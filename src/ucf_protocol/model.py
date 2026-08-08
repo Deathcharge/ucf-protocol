@@ -75,6 +75,15 @@ def phase_for_harmony(harmony: float) -> str:
     return next(phase for upper_bound, phase in PHASES if value < upper_bound)
 
 
+def _phase_ranges() -> dict[str, tuple[float, float]]:
+    lower_bound = 0.0
+    ranges: dict[str, tuple[float, float]] = {}
+    for upper_bound, name in PHASES:
+        ranges[name] = (lower_bound, min(upper_bound, 1.0))
+        lower_bound = upper_bound
+    return ranges
+
+
 def _validate_text(name: str, value: str | None, maximum: int) -> str | None:
     if value is None:
         return None
@@ -360,13 +369,7 @@ class UCFState:
 class UCFProtocol:
     """Compatibility facade for formatting and serializing UCF observations."""
 
-    PHASES = {
-        "CRITICAL": (0.0, 0.30),
-        "UNSTABLE": (0.30, 0.45),
-        "COHERENT": (0.45, 0.60),
-        "HARMONIOUS": (0.60, 0.80),
-        "TRANSCENDENT": (0.80, 1.0),
-    }
+    PHASES = MappingProxyType(_phase_ranges())
     TARGETS = MappingProxyType(TARGETS)
 
     @staticmethod
@@ -442,7 +445,10 @@ class UCFProtocol:
     ) -> str:
         agent = _validate_text("agent_name", agent_name, _MAX_AGENT_LENGTH)
         body = _validate_text("message", message, _MAX_CONTEXT_LENGTH)
-        kind = message_type.upper()
+        validated_type = _validate_text("message_type", message_type, 16)
+        if validated_type is None:
+            raise UCFValidationError("message_type must be a string")
+        kind = validated_type.upper()
         if kind not in {"INFO", "WARNING", "ERROR", "SUCCESS"}:
             raise UCFValidationError("message_type must be INFO, WARNING, ERROR, or SUCCESS")
         lines = [f"[{kind}] [{agent}] {_format_timestamp(datetime.now(UTC))}", str(body)]

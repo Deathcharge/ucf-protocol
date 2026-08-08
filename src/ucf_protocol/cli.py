@@ -91,14 +91,15 @@ def _read_bounded(path: str, stdin: TextIO) -> str:
     else:
         source_path = Path(path)
         try:
-            size = source_path.stat().st_size
+            with source_path.open("rb") as handle:
+                raw = handle.read(_MAX_INPUT_BYTES + 1)
         except OSError as exc:
             raise UCFValidationError(f"could not read {source_path}: {exc}") from exc
-        if size > _MAX_INPUT_BYTES:
+        if len(raw) > _MAX_INPUT_BYTES:
             raise UCFValidationError(f"input must be at most {_MAX_INPUT_BYTES} bytes")
         try:
-            value = source_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError) as exc:
+            value = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
             raise UCFValidationError(f"could not read {source_path}: {exc}") from exc
         source = str(source_path)
     if len(value.encode("utf-8")) > _MAX_INPUT_BYTES:

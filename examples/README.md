@@ -4,6 +4,7 @@
 journal, reads the latest observation, and prints a bounded summary:
 
 ```console
+python -m pip install -e ".[dev]"
 python examples/basic_journey.py --database example-ucf.db
 ```
 

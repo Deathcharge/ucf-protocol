@@ -69,7 +69,9 @@ Argument parser errors use argparse's standard exit code 2.
 ```
 
 The timestamp must include a UTC offset and is normalized to UTC. Unknown top-level and metric fields
-are rejected. `phase` and `score` are derived and verified during parsing. The packaged schema is at
+are rejected. Input requires `schema_version`, `event_id`, `timestamp`, and `metrics`. `phase` and
+`score` are optional derived cross-checks; `context`, `agent`, and `metadata` default when omitted.
+Normalized output includes every field. The packaged schema is at
 `ucf_protocol/schemas/ucf-state-v1.schema.json`; executable validation additionally enforces metadata
 byte size/depth and agreement of derived fields.
 

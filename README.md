@@ -116,7 +116,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for compatibility and change requirements
 
 ## License and release status
 
-Package metadata identifies the reusable Python core as Apache-2.0; see [LICENSE](LICENSE).
-The repository also contains pre-existing [commercial licensing guidance](LICENSING.md) and a
-[proprietary license](LICENSE.PROPRIETARY). Their public-release positioning requires owner/legal
-confirmation and is not resolved by this technical release candidate.
+Package metadata identifies the reusable Python core as Apache-2.0; see [LICENSE](LICENSE). Apache-2.0
+permits commercial use subject to its terms; no paid license is required merely to use UCF Protocol
+commercially. Samsarix LLC may separately offer optional support, consulting, indemnification, or
+alternative terms. See [LICENSING.md](LICENSING.md) for the non-binding commercial-services position
+and [LICENSE.PROPRIETARY](LICENSE.PROPRIETARY) for the repository's optional agreement template.

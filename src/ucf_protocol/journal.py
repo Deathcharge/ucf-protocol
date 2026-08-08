@@ -18,6 +18,7 @@ UTC = timezone.utc
 
 _SCHEMA_VERSION = 1
 _MAX_QUERY_LIMIT = 1_000
+_EXPORT_BATCH_SIZE = 200
 
 
 class JournalError(RuntimeError):
@@ -269,16 +270,46 @@ class UCFJournal:
         return int(row[0])
 
     def iter_all(self) -> Iterator[UCFState]:
-        try:
-            with self._connection() as connection:
-                cursor = connection.execute(
-                    "SELECT * FROM observations ORDER BY observed_at ASC, rowid ASC"
-                )
-                while rows := cursor.fetchmany(200):
-                    for row in rows:
-                        yield self._row_to_state(row)
-        except sqlite3.Error as exc:
-            raise JournalError(f"could not export journal at {self.path}: {exc}") from exc
+        last_observed_at: str | None = None
+        last_rowid = 0
+        while True:
+            try:
+                with self._connection() as connection:
+                    if last_observed_at is None:
+                        rows = connection.execute(
+                            """
+                            SELECT rowid AS export_rowid, * FROM observations
+                            ORDER BY observed_at ASC, rowid ASC
+                            LIMIT ?
+                            """,
+                            (_EXPORT_BATCH_SIZE,),
+                        ).fetchall()
+                    else:
+                        rows = connection.execute(
+                            """
+                            SELECT rowid AS export_rowid, * FROM observations
+                            WHERE observed_at > ? OR (observed_at = ? AND rowid > ?)
+                            ORDER BY observed_at ASC, rowid ASC
+                            LIMIT ?
+                            """,
+                            (
+                                last_observed_at,
+                                last_observed_at,
+                                last_rowid,
+                                _EXPORT_BATCH_SIZE,
+                            ),
+                        ).fetchall()
+                    batch = [
+                        (int(row["export_rowid"]), str(row["observed_at"]), self._row_to_state(row))
+                        for row in rows
+                    ]
+            except sqlite3.Error as exc:
+                raise JournalError(f"could not export journal at {self.path}: {exc}") from exc
+            if not batch:
+                return
+            for _, _, state in batch:
+                yield state
+            last_rowid, last_observed_at, _ = batch[-1]
 
     def summary(self, *, limit: int = 100) -> dict[str, Any]:
         observations = list(reversed(self.recent(limit=limit)))

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,7 @@ from ucf_protocol import (
     UCFValidationError,
 )
 from ucf_protocol.journal import default_database_path, parse_range_timestamp
+from ucf_protocol.model import PHASES
 
 UTC = timezone.utc
 
@@ -63,6 +65,36 @@ def test_record_read_order_and_duplicate_protection(tmp_path) -> None:
 
     with UCFJournal(path) as reopened:
         assert reopened.latest() == second
+
+
+def test_iter_all_preserves_order_across_bounded_batches(tmp_path) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(tmp_path / "journal.db") as journal:
+        for index in range(205):
+            journal.record(state(f"event-{index:03}", start + timedelta(seconds=index)))
+        assert [item.event_id for item in journal.iter_all()] == [
+            f"event-{index:03}" for index in range(205)
+        ]
+
+
+def test_iter_all_closes_file_connection_before_first_yield(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    with UCFJournal(path) as journal:
+        journal.record(state("event-1", datetime(2026, 7, 28, tzinfo=UTC)))
+
+        opened: list[sqlite3.Connection] = []
+        connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+        iterator = journal.iter_all()
+        assert next(iterator).event_id == "event-1"
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            opened[-1].execute("SELECT 1")
 
 
 def test_between_and_summary_use_bounded_chronological_data(tmp_path) -> None:
@@ -143,6 +175,22 @@ def test_incompatible_schema_is_visible(tmp_path) -> None:
     connection.close()
     with pytest.raises(JournalError, match="not supported"):
         UCFJournal(path)
+
+
+def test_journal_phase_constraint_matches_model(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    with UCFJournal(path):
+        connection = sqlite3.connect(path)
+        try:
+            row = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'observations'"
+            ).fetchone()
+        finally:
+            connection.close()
+    assert row is not None
+    match = re.search(r"phase\s+IN\s*\((.*?)\)", str(row[0]), flags=re.IGNORECASE | re.DOTALL)
+    assert match is not None
+    assert re.findall(r"'([^']+)'", match.group(1)) == [name for _, name in PHASES]
 
 
 def test_default_path_honors_explicit_environment(monkeypatch, tmp_path) -> None:

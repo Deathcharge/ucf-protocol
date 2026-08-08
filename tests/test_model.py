@@ -15,6 +15,7 @@ from ucf_protocol import (
     phase_for_harmony,
     state_from_json,
 )
+from ucf_protocol.model import PHASES
 
 UTC = timezone.utc
 
@@ -47,6 +48,12 @@ def metrics(**overrides: float) -> MetricSet:
 def test_phase_boundaries(value: float, expected: str) -> None:
     assert phase_for_harmony(value) == expected
     assert UCFProtocol.get_phase(value) == expected
+
+
+def test_compatibility_phase_ranges_derive_from_protocol_boundaries() -> None:
+    assert list(UCFProtocol.PHASES) == [name for _, name in PHASES]
+    assert UCFProtocol.PHASES["CRITICAL"] == (0.0, 0.3)
+    assert UCFProtocol.PHASES["TRANSCENDENT"] == (0.8, 1.0)
 
 
 @pytest.mark.parametrize("value", [-0.01, 1.01, math.inf, -math.inf, math.nan, True, "0.5"])
@@ -253,6 +260,20 @@ def test_state_mapping_requires_identity_timestamp_and_metrics() -> None:
             UCFState.from_dict(incomplete)
 
 
+def test_state_mapping_accepts_optional_derived_and_descriptive_fields() -> None:
+    payload = UCFState(metrics=metrics(), event_id="minimal-event").to_dict()
+    minimal = {
+        name: value
+        for name, value in payload.items()
+        if name in {"schema_version", "event_id", "timestamp", "metrics"}
+    }
+    parsed = UCFState.from_dict(minimal)
+    assert parsed.event_id == "minimal-event"
+    assert parsed.context is None
+    assert parsed.agent is None
+    assert parsed.metadata == {}
+
+
 def test_compatibility_facade_formats_validated_values() -> None:
     compact = UCFProtocol.format_compact_state(0.65, 0.7, 0.75, 0.8, 0.15, 0.6)
     assert "HARMONIOUS" in compact
@@ -270,6 +291,13 @@ def test_compatibility_facade_formats_validated_values() -> None:
     assert "UCF:" in message
     with pytest.raises(UCFValidationError, match="message_type"):
         UCFProtocol.format_agent_message("operator", "done", message_type="debug")
+    for invalid_type in (None, 42, ""):
+        with pytest.raises(UCFValidationError, match="message_type"):
+            UCFProtocol.format_agent_message(
+                "operator",
+                "done",
+                message_type=invalid_type,  # type: ignore[arg-type]
+            )
 
     serialized = json.loads(UCFProtocol.to_json(0.65, 0.7, 0.75, 0.8, 0.15, 0.6))
     assert serialized["schema_version"] == "ucf/v1"

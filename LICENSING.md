@@ -1,46 +1,24 @@
-# Dual Licensing Strategy
+# Licensing and optional commercial services
 
-This project is available under two licenses:
+The packaged UCF Protocol implementation is available under the
+[Apache License 2.0](./LICENSE). That license permits commercial and private use, modification, and
+redistribution subject to its notice and other terms. A business does not need to buy a separate
+license merely to use UCF Protocol commercially.
 
-1. **Apache License 2.0** - For open-source use (free)
-2. **Proprietary Commercial License** - For businesses ($99-999/year)
+The Apache license in `LICENSE` is the sole license declared in package metadata and shipped as the
+distribution license.
 
-## Apache 2.0 (Open Source)
+## Optional agreement
 
-Use this license if you:
-- Are building open-source software
-- Want to contribute to the community
-- Are using it internally
-- Don't need commercial support
-- Want to avoid licensing fees
+Samsarix LLC may separately offer negotiated support, consulting, warranty, indemnification, or
+other enhanced terms. Those services are optional and do not narrow rights already granted under
+Apache-2.0.
 
-See [LICENSE](./LICENSE) for full terms.
+The repository's [proprietary agreement](./LICENSE.PROPRIETARY) is an alternative template for such
+an arrangement. It applies only when Samsarix LLC and the customer deliberately choose that agreement;
+its presence in the repository does not replace the Apache-2.0 grant.
 
-## Proprietary Commercial License
+No public price, service level, warranty, or indemnification promise is made by this repository.
+Specific scope and pricing must be confirmed in a written agreement.
 
-Use this license if you:
-- Are building commercial products
-- Want priority support
-- Need legal indemnification
-- Want to support the developer
-
-**Pricing:**
-- Startup: $99/year (up to 5 deployments)
-- Professional: $499/year (up to 25 deployments)
-- Enterprise: Custom quote (unlimited)
-
-**Includes:**
-- Priority email support (best-effort)
-- Indemnification for unmodified software
-- Commercial use rights
-- Quarterly consulting calls (Professional+)
-
-**Important:** This is a solo project. Support is best-effort, not guaranteed SLAs. I'm one person building this as a passion project, so please set realistic expectations.
-
-For commercial licensing inquiries:
-📧 contact@samsarix.com
-
----
-
-The controlling proprietary terms for this repository are in
-[LICENSE.PROPRIETARY](./LICENSE.PROPRIETARY).
+For optional commercial-service or alternative-license inquiries: `contact@samsarix.com`.
