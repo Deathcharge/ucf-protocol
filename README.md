@@ -99,6 +99,7 @@ signals are positive. The exchange contract is `ucf/v1`; its JSON Schema ships i
 - [Local operation and release](docs/DEPLOYMENT.md)
 - [Security policy](SECURITY.md)
 - [Productization evidence](docs/PRODUCTIZATION.md)
+- [Competitive research and product wedge](docs/COMPETITIVE_RESEARCH.md)
 
 ## Development
 
