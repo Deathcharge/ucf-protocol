@@ -15,6 +15,8 @@ ucf [--database PATH] <command> [options]
 | `status` | Show the latest observation | Exit 3 with next-step guidance |
 | `history` | Show up to 1,000 recent observations | Success with an empty result |
 | `summary` | Aggregate up to 1,000 recent observations | Success with an empty result |
+| `compare` | Compare baseline and candidate time windows | Exit 2 if either window is empty |
+| `check` | Apply explicit thresholds to recent observations | Exit 2 if the journal is empty |
 | `validate` | Validate a complete `ucf/v1` JSON object | Does not open a journal |
 | `export` | Stream all rows as JSON Lines | Success with empty output |
 
@@ -31,6 +33,7 @@ overrides.
 | `2` | Invalid observation, JSON, input size, query limit, or destination state |
 | `3` | `status` requested from an empty journal |
 | `4` | Duplicate event ID |
+| `5` | A valid `check` policy did not pass |
 | `130` | Interrupted by the user |
 
 Argument parser errors use argparse's standard exit code 2.
@@ -44,6 +47,31 @@ Argument parser errors use argparse's standard exit code 2.
 - History and summary limits are integers from 1 through 1,000.
 - Export does not overwrite an existing path without `--force`.
 - SQL values use parameter binding. Event IDs are primary keys.
+
+### Compare and gate a candidate
+
+`compare` uses inclusive, timezone-aware ISO 8601 windows and reports candidate-minus-baseline
+deltas. Raw friction delta preserves the source values; `directional_metrics.friction` reverses its
+sign so every positive directional delta means improvement.
+
+```console
+ucf --database assessments.db compare \
+  --baseline-start 2026-08-01T00:00:00Z --baseline-end 2026-08-02T00:00:00Z \
+  --candidate-start 2026-08-02T00:00:01Z --candidate-end 2026-08-03T00:00:00Z \
+  --json
+```
+
+`check` applies thresholds to averages over the most recent bounded window. It exits 0 on pass and
+5 on policy failure, making it suitable for CI without treating a failed threshold as malformed
+input.
+
+```console
+ucf --database assessments.db check --limit 100 \
+  --min-score 0.70 --min-harmony 0.65 --max-friction 0.25 --json
+```
+
+At least one threshold is required. Available minimums are score, harmony, resilience, throughput,
+focus, and velocity; friction is a maximum because lower values are better.
 
 ## `ucf/v1` JSON object
 
@@ -83,6 +111,9 @@ The stable public imports are exposed from `ucf_protocol`:
 - `UCFState`: immutable observation; `to_dict()`, `to_json()`, and `from_dict()`.
 - `UCFJournal`: SQLite persistence; `record`, `get`, `latest`, `recent`, `between`, `count`,
   `iter_all`, and `summary`.
+- `summarize_states()` and `compare_states()`: deterministic collection averages and transparent
+  candidate-minus-baseline deltas.
+- `QualityPolicy`, `evaluate_policy()`, and `GateResult`: explicit average-value CI gates.
 - `state_from_json()` and `parse_timestamp()`: strict boundary parsers.
 - `UCFValidationError`, `JournalError`, and `DuplicateEventError`: public failure types.
 - `UCFProtocol`: compatibility formatting facade for callers of the earlier single-module API.
@@ -109,3 +140,21 @@ with UCFJournal("journal.db") as journal:
 
 Metadata is recursively copied and frozen at construction, then thawed into ordinary JSON values on
 serialization. Mutating the caller's original mapping cannot change a recorded `UCFState`.
+
+## External correlation metadata
+
+UCF does not own trace or experiment identifiers. Producers should place applicable identifiers in
+the `metadata.correlation` object using these keys:
+
+| Key | Meaning |
+| --- | --- |
+| `trace_id` | OpenTelemetry or platform trace identifier |
+| `span_id` | Span or observation identifier |
+| `session_id` | Conversation, workflow, or evaluation session |
+| `experiment_id` | Dataset run or experiment identifier |
+| `release_id` | Build, deployment, prompt, model, or release candidate |
+| `evaluator_id` | Human, rubric, code evaluator, or model configuration |
+
+Values are strings owned by the external system. Additional vendor-specific keys may be nested
+under `metadata.vendor`; secrets, prompts, personal data, and authentication tokens should not be
+copied into correlation metadata.

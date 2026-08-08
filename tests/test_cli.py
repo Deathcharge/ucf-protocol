@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 import ucf_protocol.cli as cli_module
-from ucf_protocol.cli import EXIT_DUPLICATE, EXIT_EMPTY, EXIT_INVALID, main
+from ucf_protocol.cli import EXIT_DUPLICATE, EXIT_EMPTY, EXIT_GATE_FAILED, EXIT_INVALID, main
 
 
 def invoke(arguments: list[str], stdin: str = "") -> tuple[int, str, str]:
@@ -301,3 +301,55 @@ def test_entrypoint_converts_return_code_to_system_exit(monkeypatch) -> None:
     with pytest.raises(SystemExit) as exc_info:
         cli_module.entrypoint()
     assert exc_info.value.code == 4
+
+
+def test_compare_and_policy_gate_commands(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    first = record_args(path, "baseline")
+    first.extend(["--json"])
+    assert invoke(first)[0] == 0
+
+    code, comparison_json, stderr = invoke(
+        [
+            "--database",
+            str(path),
+            "compare",
+            "--baseline-start",
+            "2000-01-01T00:00:00Z",
+            "--baseline-end",
+            "2100-01-01T00:00:00Z",
+            "--candidate-start",
+            "2000-01-01T00:00:00Z",
+            "--candidate-end",
+            "2100-01-01T00:00:00Z",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert json.loads(comparison_json)["delta"]["score"] == 0
+    assert stderr == ""
+
+    code, output, stderr = invoke(
+        ["--database", str(path), "check", "--min-harmony", "0.6", "--max-friction", "0.2"]
+    )
+    assert code == 0
+    assert output.startswith("PASS:")
+    assert stderr == ""
+
+    code, output, stderr = invoke(
+        ["--database", str(path), "check", "--min-harmony", "0.9", "--json"]
+    )
+    assert code == EXIT_GATE_FAILED
+    assert json.loads(output)["passed"] is False
+    assert stderr == ""
+
+
+def test_compare_and_gate_reject_empty_or_invalid_configuration(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    code, _, stderr = invoke(["--database", str(path), "check", "--min-score", "0.5"])
+    assert code == EXIT_INVALID
+    assert "at least one observation" in stderr
+
+    code, _, stderr = invoke(["--database", str(path), "check"])
+    assert code == EXIT_INVALID
+    assert "threshold" in stderr

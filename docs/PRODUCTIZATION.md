@@ -1,6 +1,6 @@
 # UCF Protocol productization record
 
-Last updated: 2026-07-28
+Last updated: 2026-08-08
 
 ## Current repository assessment
 
@@ -157,6 +157,12 @@ There were no real repository lint, format, or type-check configurations to run 
   between bounded batches, removed phase-definition drift, aligned schema/parser requirements, and
   normalized invalid message-type errors. Also corrected the commercial-license narrative so it does
   not contradict the Apache-2.0 package grant.
+- Researched current evaluation and tracing platforms, selected a complementary local-first
+  assessment and release-gating wedge, and documented the product boundary and non-goals.
+- Added deterministic baseline/candidate comparisons, direction-aware metric deltas, explicit
+  average-value quality policies, stable machine-readable results, and CI exit code 5.
+- Documented a vendor-neutral correlation metadata convention for traces, spans, sessions,
+  experiments, releases, and evaluators.
 
 ## Final local verification
 
@@ -165,10 +171,10 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | Check | Result |
 | --- | --- |
 | `python -m compileall -q src tests examples` | Passed. |
-| `ruff format --check src tests examples` | Passed; 13 files already formatted. |
+| `ruff format --check src tests examples` | Passed; 15 files already formatted. |
 | `ruff check src tests examples` | Passed; no findings. |
-| `mypy src` | Passed in strict mode; 6 source files checked. |
-| `pytest` | Passed: 91 tests, 95.34% branch coverage. |
+| `mypy src` | Passed in strict mode; 7 source files checked. |
+| `pytest` | Passed: 101 tests, 94.67% branch coverage. |
 | `python -m build --outdir .artifacts/dist-final` | Passed; isolated sdist-to-wheel build. |
 | `python -m twine check .artifacts/dist-final/*` | Passed for wheel and sdist. |
 | Clean-wheel `pip check` | Passed; no broken requirements and no runtime dependencies. |

@@ -14,17 +14,22 @@ def test_public_api_and_version_are_deliberate() -> None:
         "METRIC_NAMES",
         "SCHEMA_VERSION",
         "DuplicateEventError",
+        "GateResult",
         "JournalError",
         "MetricSet",
+        "QualityPolicy",
         "UCFJournal",
         "UCFProtocol",
         "UCFState",
         "UCFValidationError",
         "__version__",
         "default_database_path",
+        "compare_states",
+        "evaluate_policy",
         "parse_timestamp",
         "phase_for_harmony",
         "state_from_json",
+        "summarize_states",
     ]
 
 

@@ -55,11 +55,16 @@ ucf --database ucf-demo.db status
 ucf --database ucf-demo.db history --json
 ucf --database ucf-demo.db summary
 ucf --database ucf-demo.db export --output observations.jsonl
+ucf --database ucf-demo.db check --min-score 0.60 --max-friction 0.30
 ```
 
 `init` is optional because every journal command initializes the database safely. Running
 `status` against an empty journal returns an actionable message and exit code 3. Run
 `ucf <command> --help` for command-specific options.
+
+For release evaluation, record baseline and candidate observations with external trace or release
+identifiers in metadata, use `ucf compare` for transparent window deltas, and use `ucf check` as a
+deterministic CI gate. See the [CLI and Python API](docs/API.md) for the complete contract.
 
 ## Python API
 

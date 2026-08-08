@@ -12,13 +12,22 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from ._version import __version__
+from .analysis import QualityPolicy, compare_states, evaluate_policy
 from .journal import DuplicateEventError, JournalError, UCFJournal, default_database_path
-from .model import METRIC_NAMES, MetricSet, UCFState, UCFValidationError, state_from_json
+from .model import (
+    METRIC_NAMES,
+    MetricSet,
+    UCFState,
+    UCFValidationError,
+    parse_timestamp,
+    state_from_json,
+)
 
 EXIT_ERROR = 1
 EXIT_INVALID = 2
 EXIT_EMPTY = 3
 EXIT_DUPLICATE = 4
+EXIT_GATE_FAILED = 5
 _MAX_INPUT_BYTES = 65_536
 
 
@@ -73,6 +82,22 @@ def _build_parser() -> argparse.ArgumentParser:
         "--limit", type=_bounded_limit, default=100, help="Rows to summarize (1-1000)"
     )
     summary.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+
+    compare = subparsers.add_parser("compare", help="Compare two explicit observation windows")
+    for prefix in ("baseline", "candidate"):
+        compare.add_argument(f"--{prefix}-start", required=True, metavar="TIMESTAMP")
+        compare.add_argument(f"--{prefix}-end", required=True, metavar="TIMESTAMP")
+    compare.add_argument(
+        "--limit", type=_bounded_limit, default=1000, help="Rows per window (1-1000)"
+    )
+    compare.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+
+    check = subparsers.add_parser("check", help="Apply explicit thresholds to recent observations")
+    check.add_argument("--limit", type=_bounded_limit, default=100, help="Rows to check (1-1000)")
+    for metric in ("score", "harmony", "resilience", "throughput", "focus", "velocity"):
+        check.add_argument(f"--min-{metric}", type=float)
+    check.add_argument("--max-friction", type=float)
+    check.add_argument("--json", action="store_true", help="Print machine-readable JSON")
 
     validate = subparsers.add_parser("validate", help="Validate one ucf/v1 JSON object")
     validate.add_argument("path", metavar="PATH", help="JSON file path, or '-' for stdin")
@@ -299,6 +324,59 @@ def run(
                 print(f"Average score: {summary['score']['average']:.4f}", file=stdout)
                 print(f"Harmony delta: {summary['harmony_delta']:+.4f}", file=stdout)
             return 0
+
+        if args.command == "compare":
+            baseline = journal.between(
+                parse_timestamp(args.baseline_start),
+                parse_timestamp(args.baseline_end),
+                limit=args.limit,
+            )
+            candidate = journal.between(
+                parse_timestamp(args.candidate_start),
+                parse_timestamp(args.candidate_end),
+                limit=args.limit,
+            )
+            comparison = compare_states(baseline, candidate)
+            if args.json:
+                print(json.dumps(comparison, indent=2, sort_keys=True), file=stdout)
+            else:
+                print(
+                    f"Baseline: {comparison['baseline']['count']} observations, "
+                    f"score {comparison['baseline']['score']:.4f}",
+                    file=stdout,
+                )
+                print(
+                    f"Candidate: {comparison['candidate']['count']} observations, "
+                    f"score {comparison['candidate']['score']:.4f}",
+                    file=stdout,
+                )
+                print(f"Score delta: {comparison['delta']['score']:+.4f}", file=stdout)
+                for name, delta in comparison["delta"]["directional_metrics"].items():
+                    print(f"{name.capitalize()} improvement: {delta:+.4f}", file=stdout)
+            return 0
+
+        if args.command == "check":
+            policy = QualityPolicy(
+                min_score=args.min_score,
+                min_harmony=args.min_harmony,
+                min_resilience=args.min_resilience,
+                min_throughput=args.min_throughput,
+                min_focus=args.min_focus,
+                max_friction=args.max_friction,
+                min_velocity=args.min_velocity,
+            )
+            result = evaluate_policy(journal.recent(limit=args.limit), policy)
+            if args.json:
+                print(json.dumps(result.to_dict(), indent=2, sort_keys=True), file=stdout)
+            elif result.passed:
+                print(
+                    f"PASS: {result.summary['count']} observations satisfy the policy.", file=stdout
+                )
+            else:
+                print(f"FAIL: {len(result.failures)} policy threshold(s) missed.", file=stdout)
+                for failure in result.failures:
+                    print(f"- {failure}", file=stdout)
+            return 0 if result.passed else EXIT_GATE_FAILED
 
         if args.command == "export":
             count = _write_export(journal, args.output, args.force, stdout)

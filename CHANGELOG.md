@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org/). Dates use ISO 8
 - SQLite journal with duplicate-event protection, bounded queries, summary, and JSONL iteration.
 - `ucf` CLI commands: `init`, `record`, `status`, `history`, `summary`, `validate`, and `export`.
 - Explicit exit-code contract, bounded input and metadata, atomic file export, and clear empty state.
+- Deterministic baseline/candidate comparison and explicit average-value quality gates for CI.
 - Cross-version CI, strict static checks, branch coverage gate, distribution checks, and wheel smoke
   installation.
 
