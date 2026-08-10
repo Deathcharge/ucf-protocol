@@ -2,7 +2,13 @@
 
 from ._version import __version__
 from .analysis import GateResult, QualityPolicy, compare_states, evaluate_policy, summarize_states
-from .journal import DuplicateEventError, JournalError, UCFJournal, default_database_path
+from .journal import (
+    DuplicateEventError,
+    ImportResult,
+    JournalError,
+    UCFJournal,
+    default_database_path,
+)
 from .model import (
     LEGACY_ALIASES,
     METRIC_NAMES,
@@ -22,6 +28,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "DuplicateEventError",
     "GateResult",
+    "ImportResult",
     "JournalError",
     "MetricSet",
     "QualityPolicy",

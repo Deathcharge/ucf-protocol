@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+import ucf_protocol.journal as journal_module
 from ucf_protocol import (
     DuplicateEventError,
     JournalError,
@@ -65,6 +66,64 @@ def test_record_read_order_and_duplicate_protection(tmp_path) -> None:
 
     with UCFJournal(path) as reopened:
         assert reopened.latest() == second
+
+
+def test_record_many_is_atomic_and_supports_explicit_duplicate_policy(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    existing = state("existing", start)
+    first = state("first", start + timedelta(seconds=1))
+    second = state("second", start + timedelta(seconds=2))
+    with UCFJournal(path) as journal:
+        journal.record(existing)
+        with pytest.raises(DuplicateEventError, match="existing"):
+            journal.record_many([first, existing, second])
+        assert journal.count() == 1
+        assert journal.get("first") is None
+
+        result = journal.record_many([first, existing, first, second], on_duplicate="skip")
+        assert result.to_dict() == {
+            "processed": 4,
+            "recorded": 2,
+            "skipped": 2,
+            "dry_run": False,
+        }
+        assert journal.count() == 3
+
+
+def test_record_many_dry_run_and_validation_leave_journal_unchanged(monkeypatch) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(":memory:") as journal:
+        result = journal.record_many([state("dry-run", start)], dry_run=True)
+        assert result.recorded == 1
+        assert result.dry_run
+        assert journal.count() == 0
+
+        with pytest.raises(UCFValidationError, match="only UCFState"):
+            journal.record_many([object()])  # type: ignore[list-item]
+        with pytest.raises(UCFValidationError, match="on_duplicate"):
+            journal.record_many([], on_duplicate="replace")
+        with pytest.raises(UCFValidationError, match="boolean"):
+            journal.record_many([], dry_run=1)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(journal_module, "_MAX_IMPORT_ROWS", 1)
+        with pytest.raises(UCFValidationError, match="exceed"):
+            journal.record_many([state("one", start), state("two", start)])
+
+
+def test_record_many_rolls_back_memory_transaction_on_interrupt(monkeypatch) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(":memory:") as journal:
+        insert = journal._insert
+
+        def interrupted(connection, observation) -> None:
+            insert(connection, observation)
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(journal, "_insert", interrupted)
+        with pytest.raises(KeyboardInterrupt):
+            journal.record_many([state("interrupted", start)])
+        assert journal.count() == 0
 
 
 def test_iter_all_preserves_order_across_bounded_batches(tmp_path) -> None:

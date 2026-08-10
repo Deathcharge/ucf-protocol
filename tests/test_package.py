@@ -15,6 +15,7 @@ def test_public_api_and_version_are_deliberate() -> None:
         "SCHEMA_VERSION",
         "DuplicateEventError",
         "GateResult",
+        "ImportResult",
         "JournalError",
         "MetricSet",
         "QualityPolicy",

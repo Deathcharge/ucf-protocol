@@ -163,6 +163,10 @@ There were no real repository lint, format, or type-check configurations to run 
   average-value quality policies, stable machine-readable results, and CI exit code 5.
 - Documented a vendor-neutral correlation metadata convention for traces, spans, sessions,
   experiments, releases, and evaluators.
+- Added bounded atomic JSONL import with rollback-on-error, dry-run, and explicit duplicate
+  policies; packaged a manifest-driven valid, invalid, boundary, and correlation fixture suite.
+- Added and executed an end-to-end release-gate example, and hardened simultaneous first-open
+  SQLite initialization after the full suite exposed a WAL mode-change race.
 
 ## Final local verification
 
@@ -171,10 +175,10 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | Check | Result |
 | --- | --- |
 | `python -m compileall -q src tests examples` | Passed. |
-| `ruff format --check src tests examples` | Passed; 15 files already formatted. |
+| `ruff format --check src tests examples` | Passed; 17 files already formatted. |
 | `ruff check src tests examples` | Passed; no findings. |
 | `mypy src` | Passed in strict mode; 7 source files checked. |
-| `pytest` | Passed: 101 tests, 94.67% branch coverage. |
+| `pytest` | Passed: 107 tests, 94.46% branch coverage. |
 | `python -m build --outdir .artifacts/dist-final` | Passed; isolated sdist-to-wheel build. |
 | `python -m twine check .artifacts/dist-final/*` | Passed for wheel and sdist. |
 | Clean-wheel `pip check` | Passed; no broken requirements and no runtime dependencies. |

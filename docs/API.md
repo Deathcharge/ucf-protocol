@@ -18,6 +18,7 @@ ucf [--database PATH] <command> [options]
 | `compare` | Compare baseline and candidate time windows | Exit 2 if either window is empty |
 | `check` | Apply explicit thresholds to recent observations | Exit 2 if the journal is empty |
 | `validate` | Validate a complete `ucf/v1` JSON object | Does not open a journal |
+| `import` | Atomically import bounded `ucf/v1` JSON Lines | Exit 2 for empty or invalid input |
 | `export` | Stream all rows as JSON Lines | Success with empty output |
 
 Run `ucf <command> --help` for all flags. `record` accepts either a complete object through
@@ -41,12 +42,28 @@ Argument parser errors use argparse's standard exit code 2.
 ### Bounds and safe defaults
 
 - File/stdin observation input is limited to 65,536 UTF-8 bytes.
+- JSONL import is limited to 10 MiB, 10,000 non-blank observations, and 65,536 bytes per line.
 - Metadata is a JSON object limited to 16,384 encoded bytes, 256 items per collection, and eight
   nesting levels.
 - Context is limited to 512 characters; agent labels to 128 characters.
 - History and summary limits are integers from 1 through 1,000.
 - Export does not overwrite an existing path without `--force`.
 - SQL values use parameter binding. Event IDs are primary keys.
+
+### Atomic JSONL import
+
+Import consumes one complete `ucf/v1` object per non-blank line. The default duplicate policy is
+`error`: any duplicate rolls back the entire batch. `--on-duplicate skip` retains the first new
+event and reports existing or repeated IDs as skipped. `--dry-run` performs the same transaction and
+validation but rolls it back.
+
+```console
+ucf --database assessments.db import observations.jsonl --dry-run --json
+ucf --database assessments.db import observations.jsonl --on-duplicate skip --json
+```
+
+The result contains `processed`, `recorded`, `skipped`, and `dry_run`. A dry run's `recorded` value
+means rows that would be inserted; the journal remains unchanged.
 
 ### Compare and gate a candidate
 
@@ -110,7 +127,8 @@ The stable public imports are exposed from `ucf_protocol`:
 - `MetricSet`: immutable validated six-metric value object; `score`, `phase`, and `to_dict()`.
 - `UCFState`: immutable observation; `to_dict()`, `to_json()`, and `from_dict()`.
 - `UCFJournal`: SQLite persistence; `record`, `get`, `latest`, `recent`, `between`, `count`,
-  `iter_all`, and `summary`.
+  `iter_all`, `record_many`, and `summary`.
+- `ImportResult`: processed, would-be/actual recorded, skipped, and dry-run counts.
 - `summarize_states()` and `compare_states()`: deterministic collection averages and transparent
   candidate-minus-baseline deltas.
 - `QualityPolicy`, `evaluate_policy()`, and `GateResult`: explicit average-value CI gates.
@@ -158,3 +176,10 @@ the `metadata.correlation` object using these keys:
 Values are strings owned by the external system. Additional vendor-specific keys may be nested
 under `metadata.vendor`; secrets, prompts, personal data, and authentication tokens should not be
 copied into correlation metadata.
+
+## Packaged conformance fixtures
+
+The installed package includes `ucf_protocol/fixtures/manifest.json` plus valid, invalid, and
+boundary examples. Consumers can load them with `importlib.resources` and verify their independent
+implementation against each manifest expectation. The fixtures exercise minimal input, external
+correlation metadata, metric endpoints, a missing required metric, and a derived-phase mismatch.

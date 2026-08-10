@@ -54,7 +54,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-ucf_protocol = ["py.typed", "schemas/*.json"]
+ucf_protocol = ["py.typed", "schemas/*.json", "fixtures/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --tb=short -ra --cov=ucf_protocol --cov-branch --cov-report=term-missing"

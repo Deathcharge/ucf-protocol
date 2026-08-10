@@ -1,0 +1,14 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-invalid-derived",
+  "timestamp": "2026-08-08T00:04:00Z",
+  "phase": "CRITICAL",
+  "metrics": {
+    "harmony": 0.8,
+    "resilience": 0.8,
+    "throughput": 0.8,
+    "focus": 0.8,
+    "friction": 0.1,
+    "velocity": 0.8
+  }
+}

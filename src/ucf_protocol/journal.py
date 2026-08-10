@@ -6,8 +6,9 @@ import json
 import math
 import os
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ UTC = timezone.utc
 _SCHEMA_VERSION = 1
 _MAX_QUERY_LIMIT = 1_000
 _EXPORT_BATCH_SIZE = 200
+_MAX_IMPORT_ROWS = 10_000
 
 
 class JournalError(RuntimeError):
@@ -27,6 +29,26 @@ class JournalError(RuntimeError):
 
 class DuplicateEventError(JournalError):
     """Raised when an event ID already exists in the journal."""
+
+
+@dataclass(frozen=True, slots=True)
+class ImportResult:
+    """Outcome of an atomic journal import."""
+
+    processed: int
+    recorded: int
+    skipped: int
+    dry_run: bool
+
+    def to_dict(self) -> dict[str, int | bool]:
+        """Return a JSON-serializable import result."""
+
+        return {
+            "processed": self.processed,
+            "recorded": self.recorded,
+            "skipped": self.skipped,
+            "dry_run": self.dry_run,
+        }
 
 
 def default_database_path() -> Path:
@@ -78,7 +100,13 @@ class UCFJournal:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute(f"PRAGMA busy_timeout = {int(self.timeout * 1000)}")
         if str(self.path) != ":memory:":
-            connection.execute("PRAGMA journal_mode = WAL")
+            try:
+                connection.execute("PRAGMA journal_mode = WAL")
+            except sqlite3.OperationalError as exc:
+                # Another first-time opener can hold the mode-change lock. Continuing is safe:
+                # that opener establishes WAL, while this connection still uses busy_timeout.
+                if "locked" not in str(exc).lower():
+                    raise
         return connection
 
     @contextmanager
@@ -144,43 +172,47 @@ class UCFJournal:
         except sqlite3.Error as exc:
             raise JournalError(f"could not initialize journal at {self.path}: {exc}") from exc
 
+    @staticmethod
+    def _insert(connection: sqlite3.Connection, state: UCFState) -> None:
+        payload = state.to_dict()
+        metrics = state.metrics.to_dict()
+        connection.execute(
+            """
+            INSERT INTO observations (
+                event_id, observed_at, harmony, resilience, throughput,
+                focus, friction, velocity, score, phase, context, agent,
+                metadata_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                state.event_id,
+                payload["timestamp"],
+                metrics["harmony"],
+                metrics["resilience"],
+                metrics["throughput"],
+                metrics["focus"],
+                metrics["friction"],
+                metrics["velocity"],
+                state.score,
+                state.phase,
+                state.context,
+                state.agent,
+                json.dumps(
+                    payload["metadata"],
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                ),
+                datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+
     def record(self, state: UCFState) -> UCFState:
         if not isinstance(state, UCFState):
             raise UCFValidationError("state must be a UCFState")
-        payload = state.to_dict()
-        metrics = state.metrics.to_dict()
         try:
             with self._connection() as connection:
-                connection.execute(
-                    """
-                    INSERT INTO observations (
-                        event_id, observed_at, harmony, resilience, throughput,
-                        focus, friction, velocity, score, phase, context, agent,
-                        metadata_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        state.event_id,
-                        payload["timestamp"],
-                        metrics["harmony"],
-                        metrics["resilience"],
-                        metrics["throughput"],
-                        metrics["focus"],
-                        metrics["friction"],
-                        metrics["velocity"],
-                        state.score,
-                        state.phase,
-                        state.context,
-                        state.agent,
-                        json.dumps(
-                            payload["metadata"],
-                            ensure_ascii=False,
-                            allow_nan=False,
-                            separators=(",", ":"),
-                        ),
-                        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                    ),
-                )
+                self._insert(connection, state)
                 connection.commit()
         except sqlite3.IntegrityError as exc:
             if self.get(state.event_id) is not None:
@@ -189,6 +221,62 @@ class UCFJournal:
         except sqlite3.Error as exc:
             raise JournalError(f"could not record observation in {self.path}: {exc}") from exc
         return state
+
+    def record_many(
+        self,
+        states: Iterable[UCFState],
+        *,
+        on_duplicate: str = "error",
+        dry_run: bool = False,
+    ) -> ImportResult:
+        """Validate and insert a bounded collection in one transaction."""
+
+        if on_duplicate not in {"error", "skip"}:
+            raise UCFValidationError("on_duplicate must be 'error' or 'skip'")
+        if not isinstance(dry_run, bool):
+            raise UCFValidationError("dry_run must be a boolean")
+        observations: list[UCFState] = []
+        for state in states:
+            if not isinstance(state, UCFState):
+                raise UCFValidationError("states must contain only UCFState observations")
+            observations.append(state)
+            if len(observations) > _MAX_IMPORT_ROWS:
+                raise UCFValidationError(f"import must not exceed {_MAX_IMPORT_ROWS} observations")
+
+        recorded = 0
+        skipped = 0
+        try:
+            with self._connection() as connection:
+                try:
+                    for state in observations:
+                        try:
+                            self._insert(connection, state)
+                            recorded += 1
+                        except sqlite3.IntegrityError as exc:
+                            duplicate = connection.execute(
+                                "SELECT 1 FROM observations WHERE event_id = ?", (state.event_id,)
+                            ).fetchone()
+                            if duplicate is None:
+                                raise JournalError(
+                                    f"observation violated the journal schema: {exc}"
+                                ) from exc
+                            if on_duplicate == "error":
+                                raise DuplicateEventError(
+                                    f"event_id already exists: {state.event_id}"
+                                ) from exc
+                            skipped += 1
+                    if dry_run:
+                        connection.rollback()
+                    else:
+                        connection.commit()
+                except BaseException:
+                    connection.rollback()
+                    raise
+        except (DuplicateEventError, JournalError):
+            raise
+        except sqlite3.Error as exc:
+            raise JournalError(f"could not import observations into {self.path}: {exc}") from exc
+        return ImportResult(len(observations), recorded, skipped, dry_run)
 
     def get(self, event_id: str) -> UCFState | None:
         try:

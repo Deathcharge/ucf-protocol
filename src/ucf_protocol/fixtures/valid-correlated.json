@@ -1,0 +1,22 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-correlated",
+  "timestamp": "2026-08-08T00:01:00Z",
+  "metrics": {
+    "harmony": 0.72,
+    "resilience": 0.81,
+    "throughput": 0.76,
+    "focus": 0.84,
+    "friction": 0.14,
+    "velocity": 0.7
+  },
+  "context": "candidate release assessment",
+  "agent": "reviewer-1",
+  "metadata": {
+    "correlation": {
+      "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+      "release_id": "candidate-2026-08-08",
+      "evaluator_id": "human-rubric-v1"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-boundary",
+  "timestamp": "2026-08-08T00:02:00+00:00",
+  "metrics": {
+    "harmony": 0.0,
+    "resilience": 1.0,
+    "throughput": 0.0,
+    "focus": 1.0,
+    "friction": 1.0,
+    "velocity": 0.0
+  }
+}

@@ -55,6 +55,7 @@ ucf --database ucf-demo.db status
 ucf --database ucf-demo.db history --json
 ucf --database ucf-demo.db summary
 ucf --database ucf-demo.db export --output observations.jsonl
+ucf --database imported.db import observations.jsonl --dry-run --json
 ucf --database ucf-demo.db check --min-score 0.60 --max-friction 0.30
 ```
 
@@ -105,6 +106,7 @@ signals are positive. The exchange contract is `ucf/v1`; its JSON Schema ships i
 - [Security policy](SECURITY.md)
 - [Productization evidence](docs/PRODUCTIZATION.md)
 - [Competitive research and product wedge](docs/COMPETITIVE_RESEARCH.md)
+- [End-to-end release gate example](examples/release_gate.py)
 
 ## Development
 

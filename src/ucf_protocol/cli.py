@@ -29,6 +29,8 @@ EXIT_EMPTY = 3
 EXIT_DUPLICATE = 4
 EXIT_GATE_FAILED = 5
 _MAX_INPUT_BYTES = 65_536
+_MAX_IMPORT_BYTES = 10 * 1024 * 1024
+_MAX_IMPORT_ROWS = 10_000
 
 
 def _bounded_limit(value: str) -> int:
@@ -103,33 +105,67 @@ def _build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path", metavar="PATH", help="JSON file path, or '-' for stdin")
     validate.add_argument("--json", action="store_true", help="Print normalized JSON")
 
+    import_command = subparsers.add_parser("import", help="Atomically import ucf/v1 JSON Lines")
+    import_command.add_argument("path", metavar="PATH", help="JSONL file path, or '-' for stdin")
+    import_command.add_argument(
+        "--on-duplicate",
+        choices=("error", "skip"),
+        default="error",
+        help="Duplicate policy (default: error and roll back)",
+    )
+    import_command.add_argument(
+        "--dry-run", action="store_true", help="Validate transaction without persisting rows"
+    )
+    import_command.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+
     export = subparsers.add_parser("export", help="Export the journal as JSON Lines")
     export.add_argument("--output", metavar="PATH", help="Destination file (default: stdout)")
     export.add_argument("--force", action="store_true", help="Replace an existing destination file")
     return parser
 
 
-def _read_bounded(path: str, stdin: TextIO) -> str:
+def _read_bounded(path: str, stdin: TextIO, *, maximum: int = _MAX_INPUT_BYTES) -> str:
     if path == "-":
-        value = stdin.read(_MAX_INPUT_BYTES + 1)
+        value = stdin.read(maximum + 1)
         source = "stdin"
     else:
         source_path = Path(path)
         try:
             with source_path.open("rb") as handle:
-                raw = handle.read(_MAX_INPUT_BYTES + 1)
+                raw = handle.read(maximum + 1)
         except OSError as exc:
             raise UCFValidationError(f"could not read {source_path}: {exc}") from exc
-        if len(raw) > _MAX_INPUT_BYTES:
-            raise UCFValidationError(f"input must be at most {_MAX_INPUT_BYTES} bytes")
+        if len(raw) > maximum:
+            raise UCFValidationError(f"input must be at most {maximum} bytes")
         try:
             value = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise UCFValidationError(f"could not read {source_path}: {exc}") from exc
         source = str(source_path)
-    if len(value.encode("utf-8")) > _MAX_INPUT_BYTES:
-        raise UCFValidationError(f"{source} input must be at most {_MAX_INPUT_BYTES} bytes")
+    if len(value.encode("utf-8")) > maximum:
+        raise UCFValidationError(f"{source} input must be at most {maximum} bytes")
     return value
+
+
+def _states_from_jsonl(path: str, stdin: TextIO) -> list[UCFState]:
+    value = _read_bounded(path, stdin, maximum=_MAX_IMPORT_BYTES)
+    states: list[UCFState] = []
+    for line_number, line in enumerate(value.splitlines(), start=1):
+        if not line.strip():
+            continue
+        if len(line.encode("utf-8")) > _MAX_INPUT_BYTES:
+            raise UCFValidationError(
+                f"JSONL line {line_number} must be at most {_MAX_INPUT_BYTES} bytes"
+            )
+        try:
+            states.append(state_from_json(line))
+        except UCFValidationError as exc:
+            raise UCFValidationError(f"invalid JSONL line {line_number}: {exc}") from exc
+        if len(states) > _MAX_IMPORT_ROWS:
+            raise UCFValidationError(f"import must not exceed {_MAX_IMPORT_ROWS} observations")
+    if not states:
+        raise UCFValidationError("import requires at least one non-blank JSONL observation")
+    return states
 
 
 def _metadata(value: str | None) -> dict[str, Any]:
@@ -261,6 +297,23 @@ def run(
             print("Next: ucf record --help", file=stdout)
             return 0
 
+        if args.command == "import":
+            import_result = journal.record_many(
+                _states_from_jsonl(args.path, stdin),
+                on_duplicate=args.on_duplicate,
+                dry_run=args.dry_run,
+            )
+            if args.json:
+                print(json.dumps(import_result.to_dict(), indent=2, sort_keys=True), file=stdout)
+            else:
+                action = "Validated" if import_result.dry_run else "Imported"
+                print(
+                    f"{action} {import_result.recorded} observations; "
+                    f"skipped {import_result.skipped} duplicates.",
+                    file=stdout,
+                )
+            return 0
+
         if args.command == "record":
             state = _state_from_record_args(args, stdin)
             journal.record(state)
@@ -365,18 +418,19 @@ def run(
                 max_friction=args.max_friction,
                 min_velocity=args.min_velocity,
             )
-            result = evaluate_policy(journal.recent(limit=args.limit), policy)
+            gate_result = evaluate_policy(journal.recent(limit=args.limit), policy)
             if args.json:
-                print(json.dumps(result.to_dict(), indent=2, sort_keys=True), file=stdout)
-            elif result.passed:
+                print(json.dumps(gate_result.to_dict(), indent=2, sort_keys=True), file=stdout)
+            elif gate_result.passed:
                 print(
-                    f"PASS: {result.summary['count']} observations satisfy the policy.", file=stdout
+                    f"PASS: {gate_result.summary['count']} observations satisfy the policy.",
+                    file=stdout,
                 )
             else:
-                print(f"FAIL: {len(result.failures)} policy threshold(s) missed.", file=stdout)
-                for failure in result.failures:
+                print(f"FAIL: {len(gate_result.failures)} policy threshold(s) missed.", file=stdout)
+                for failure in gate_result.failures:
                     print(f"- {failure}", file=stdout)
-            return 0 if result.passed else EXIT_GATE_FAILED
+            return 0 if gate_result.passed else EXIT_GATE_FAILED
 
         if args.command == "export":
             count = _write_export(journal, args.output, args.force, stdout)

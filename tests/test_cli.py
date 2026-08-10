@@ -179,6 +179,64 @@ def test_export_is_jsonl_and_does_not_overwrite_without_force(tmp_path) -> None:
     assert stderr == ""
 
 
+def test_jsonl_import_is_atomic_dry_runnable_and_duplicate_aware(tmp_path) -> None:
+    source_path = tmp_path / "source.db"
+    assert invoke(record_args(source_path, "one"))[0] == 0
+    _, first_json, _ = invoke(["--database", str(source_path), "status", "--json"])
+    second = json.loads(first_json)
+    second["event_id"] = "two"
+    second["timestamp"] = "2026-08-08T00:00:01Z"
+    jsonl = json.dumps(json.loads(first_json)) + "\n\n" + json.dumps(second) + "\n"
+
+    destination = tmp_path / "destination.db"
+    code, output, stderr = invoke(
+        ["--database", str(destination), "import", "-", "--dry-run", "--json"], stdin=jsonl
+    )
+    assert code == 0
+    assert json.loads(output) == {
+        "dry_run": True,
+        "processed": 2,
+        "recorded": 2,
+        "skipped": 0,
+    }
+    assert stderr == ""
+    assert invoke(["--database", str(destination), "history", "--json"])[1].strip() == "[]"
+
+    code, output, stderr = invoke(["--database", str(destination), "import", "-"], stdin=jsonl)
+    assert code == 0
+    assert "Imported 2" in output
+    assert stderr == ""
+
+    code, _, stderr = invoke(["--database", str(destination), "import", "-"], stdin=jsonl)
+    assert code == EXIT_DUPLICATE
+    assert "already exists" in stderr
+    history = invoke(["--database", str(destination), "history", "--json"])[1]
+    assert len(json.loads(history)) == 2
+
+    code, output, stderr = invoke(
+        ["--database", str(destination), "import", "-", "--on-duplicate", "skip", "--json"],
+        stdin=jsonl,
+    )
+    assert code == 0
+    assert json.loads(output)["skipped"] == 2
+    assert stderr == ""
+
+
+def test_jsonl_import_rejects_empty_bad_and_oversized_lines(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin="\n")
+    assert code == EXIT_INVALID
+    assert "at least one" in stderr
+
+    code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin='{}\n{"bad":')
+    assert code == EXIT_INVALID
+    assert "line 1" in stderr
+
+    code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin=" " * 65_537 + "x\n")
+    assert code == EXIT_INVALID
+    assert "line 1" in stderr
+
+
 def test_module_entrypoint_reports_version_from_outside_repo(tmp_path) -> None:
     source = Path(__file__).parents[1] / "src"
     environment = os.environ.copy()

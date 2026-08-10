@@ -68,6 +68,8 @@ jobs:
           smoke-venv/bin/ucf --version
           smoke-venv/bin/ucf --database smoke.db record --event-id smoke-1 --harmony 0.6 --resilience 0.7 --throughput 0.7 --focus 0.8 --friction 0.2 --velocity 0.6
           smoke-venv/bin/ucf --database smoke.db status --json
-          smoke-venv/bin/python -c "from importlib.resources import files; assert files('ucf_protocol').joinpath('schemas/ucf-state-v1.schema.json').is_file()"
-      - name: Run the shipped example
-        run: smoke-venv/bin/python examples/basic_journey.py --database example-smoke.db
+          smoke-venv/bin/python -c "from importlib.resources import files; assert files('ucf_protocol').joinpath('schemas/ucf-state-v1.schema.json').is_file(); assert files('ucf_protocol').joinpath('fixtures/manifest.json').is_file()"
+      - name: Run the shipped examples
+        run: |
+          smoke-venv/bin/python examples/basic_journey.py --database example-smoke.db
+          smoke-venv/bin/python examples/release_gate.py --database release-gate-smoke.db

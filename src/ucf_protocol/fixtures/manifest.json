@@ -1,0 +1,10 @@
+{
+  "schema_version": "ucf/fixtures/v1",
+  "cases": [
+    {"file": "valid-minimal.json", "expect": "valid"},
+    {"file": "valid-correlated.json", "expect": "valid"},
+    {"file": "boundary-all-extremes.json", "expect": "valid"},
+    {"file": "invalid-missing-metric.json", "expect": "invalid"},
+    {"file": "invalid-derived-mismatch.json", "expect": "invalid"}
+  ]
+}
