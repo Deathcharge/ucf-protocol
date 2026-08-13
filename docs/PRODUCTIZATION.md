@@ -178,7 +178,7 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | `ruff format --check src tests examples` | Passed; 17 files already formatted. |
 | `ruff check src tests examples` | Passed; no findings. |
 | `mypy src` | Passed in strict mode; 7 source files checked. |
-| `pytest` | Passed: 107 tests, 94.46% branch coverage. |
+| `pytest` | Passed: 112 tests, 94.40% branch coverage. |
 | `python -m build --outdir .artifacts/dist-final` | Passed; isolated sdist-to-wheel build. |
 | `python -m twine check .artifacts/dist-final/*` | Passed for wheel and sdist. |
 | Clean-wheel `pip check` | Passed; no broken requirements and no runtime dependencies. |

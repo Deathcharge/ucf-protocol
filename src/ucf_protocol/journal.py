@@ -356,8 +356,7 @@ class UCFJournal:
             raise JournalError(f"could not read journal at {self.path}: {exc}") from exc
         if reject_truncated and len(rows) > safe_limit:
             raise UCFValidationError(
-                f"window contains more than {safe_limit} observations; "
-                "narrow the time range or raise --limit"
+                f"window contains more than {safe_limit} observations; narrow the time range"
             )
         return [self._row_to_state(row) for row in rows[:safe_limit]]
 

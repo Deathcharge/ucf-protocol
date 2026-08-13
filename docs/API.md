@@ -72,8 +72,8 @@ directories. Malformed JSONL is rejected before the journal is opened.
 `compare` uses inclusive, timezone-aware ISO 8601 windows and reports candidate-minus-baseline
 deltas. Raw friction delta preserves the source values; `directional_metrics.friction` reverses its
 sign so every positive directional delta means improvement. Comparison fails closed if either window
-contains more rows than `--limit`; narrow the time range or raise the limit instead of comparing a
-silent prefix.
+contains more rows than `--limit`; narrow the time range instead of comparing a silent prefix. You can
+raise a lower configured limit up to the hard maximum of 1,000.
 
 ```console
 ucf --database assessments.db compare \

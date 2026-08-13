@@ -171,7 +171,7 @@ def parse_timestamp(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         raise UCFValidationError("timestamp must be a non-empty ISO 8601 string")
     try:
-        normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        normalized = value[:-1] + "+00:00" if value[-1:].casefold() == "z" else value
         parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise UCFValidationError("timestamp must be a valid ISO 8601 value") from exc
