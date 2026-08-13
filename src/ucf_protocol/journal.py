@@ -6,8 +6,9 @@ import json
 import math
 import os
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ UTC = timezone.utc
 
 _SCHEMA_VERSION = 1
 _MAX_QUERY_LIMIT = 1_000
+_EXPORT_BATCH_SIZE = 200
+_MAX_IMPORT_ROWS = 10_000
 
 
 class JournalError(RuntimeError):
@@ -26,6 +29,26 @@ class JournalError(RuntimeError):
 
 class DuplicateEventError(JournalError):
     """Raised when an event ID already exists in the journal."""
+
+
+@dataclass(frozen=True, slots=True)
+class ImportResult:
+    """Outcome of an atomic journal import."""
+
+    processed: int
+    recorded: int
+    skipped: int
+    dry_run: bool
+
+    def to_dict(self) -> dict[str, int | bool]:
+        """Return a JSON-serializable import result."""
+
+        return {
+            "processed": self.processed,
+            "recorded": self.recorded,
+            "skipped": self.skipped,
+            "dry_run": self.dry_run,
+        }
 
 
 def default_database_path() -> Path:
@@ -77,7 +100,13 @@ class UCFJournal:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute(f"PRAGMA busy_timeout = {int(self.timeout * 1000)}")
         if str(self.path) != ":memory:":
-            connection.execute("PRAGMA journal_mode = WAL")
+            try:
+                connection.execute("PRAGMA journal_mode = WAL")
+            except sqlite3.OperationalError as exc:
+                # Another first-time opener can hold the mode-change lock. Continuing is safe:
+                # that opener establishes WAL, while this connection still uses busy_timeout.
+                if "locked" not in str(exc).lower():
+                    raise
         return connection
 
     @contextmanager
@@ -90,8 +119,9 @@ class UCFJournal:
             yield self._memory_connection
             return
 
-        connection = self._configure(sqlite3.connect(self.path, timeout=self.timeout))
+        connection = sqlite3.connect(self.path, timeout=self.timeout)
         try:
+            self._configure(connection)
             yield connection
         finally:
             connection.close()
@@ -143,43 +173,47 @@ class UCFJournal:
         except sqlite3.Error as exc:
             raise JournalError(f"could not initialize journal at {self.path}: {exc}") from exc
 
+    @staticmethod
+    def _insert(connection: sqlite3.Connection, state: UCFState) -> None:
+        payload = state.to_dict()
+        metrics = state.metrics.to_dict()
+        connection.execute(
+            """
+            INSERT INTO observations (
+                event_id, observed_at, harmony, resilience, throughput,
+                focus, friction, velocity, score, phase, context, agent,
+                metadata_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                state.event_id,
+                payload["timestamp"],
+                metrics["harmony"],
+                metrics["resilience"],
+                metrics["throughput"],
+                metrics["focus"],
+                metrics["friction"],
+                metrics["velocity"],
+                state.score,
+                state.phase,
+                state.context,
+                state.agent,
+                json.dumps(
+                    payload["metadata"],
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                ),
+                datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+
     def record(self, state: UCFState) -> UCFState:
         if not isinstance(state, UCFState):
             raise UCFValidationError("state must be a UCFState")
-        payload = state.to_dict()
-        metrics = state.metrics.to_dict()
         try:
             with self._connection() as connection:
-                connection.execute(
-                    """
-                    INSERT INTO observations (
-                        event_id, observed_at, harmony, resilience, throughput,
-                        focus, friction, velocity, score, phase, context, agent,
-                        metadata_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        state.event_id,
-                        payload["timestamp"],
-                        metrics["harmony"],
-                        metrics["resilience"],
-                        metrics["throughput"],
-                        metrics["focus"],
-                        metrics["friction"],
-                        metrics["velocity"],
-                        state.score,
-                        state.phase,
-                        state.context,
-                        state.agent,
-                        json.dumps(
-                            payload["metadata"],
-                            ensure_ascii=False,
-                            allow_nan=False,
-                            separators=(",", ":"),
-                        ),
-                        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                    ),
-                )
+                self._insert(connection, state)
                 connection.commit()
         except sqlite3.IntegrityError as exc:
             if self.get(state.event_id) is not None:
@@ -188,6 +222,62 @@ class UCFJournal:
         except sqlite3.Error as exc:
             raise JournalError(f"could not record observation in {self.path}: {exc}") from exc
         return state
+
+    def record_many(
+        self,
+        states: Iterable[UCFState],
+        *,
+        on_duplicate: str = "error",
+        dry_run: bool = False,
+    ) -> ImportResult:
+        """Validate and insert a bounded collection in one transaction."""
+
+        if on_duplicate not in {"error", "skip"}:
+            raise UCFValidationError("on_duplicate must be 'error' or 'skip'")
+        if not isinstance(dry_run, bool):
+            raise UCFValidationError("dry_run must be a boolean")
+        observations: list[UCFState] = []
+        for state in states:
+            if not isinstance(state, UCFState):
+                raise UCFValidationError("states must contain only UCFState observations")
+            observations.append(state)
+            if len(observations) > _MAX_IMPORT_ROWS:
+                raise UCFValidationError(f"import must not exceed {_MAX_IMPORT_ROWS} observations")
+
+        recorded = 0
+        skipped = 0
+        try:
+            with self._connection() as connection:
+                try:
+                    for state in observations:
+                        try:
+                            self._insert(connection, state)
+                            recorded += 1
+                        except sqlite3.IntegrityError as exc:
+                            duplicate = connection.execute(
+                                "SELECT 1 FROM observations WHERE event_id = ?", (state.event_id,)
+                            ).fetchone()
+                            if duplicate is None:
+                                raise JournalError(
+                                    f"observation violated the journal schema: {exc}"
+                                ) from exc
+                            if on_duplicate == "error":
+                                raise DuplicateEventError(
+                                    f"event_id already exists: {state.event_id}"
+                                ) from exc
+                            skipped += 1
+                    if dry_run:
+                        connection.rollback()
+                    else:
+                        connection.commit()
+                except BaseException:
+                    connection.rollback()
+                    raise
+        except (DuplicateEventError, JournalError):
+            raise
+        except sqlite3.Error as exc:
+            raise JournalError(f"could not import observations into {self.path}: {exc}") from exc
+        return ImportResult(len(observations), recorded, skipped, dry_run)
 
     def get(self, event_id: str) -> UCFState | None:
         try:
@@ -230,7 +320,12 @@ class UCFJournal:
         return [self._row_to_state(row) for row in rows]
 
     def between(
-        self, start: datetime, end: datetime, *, limit: int = _MAX_QUERY_LIMIT
+        self,
+        start: datetime,
+        end: datetime,
+        *,
+        limit: int = _MAX_QUERY_LIMIT,
+        reject_truncated: bool = False,
     ) -> list[UCFState]:
         if not isinstance(start, datetime):
             raise UCFValidationError("start must be a datetime")
@@ -242,6 +337,8 @@ class UCFJournal:
             raise UCFValidationError("end must include a UTC offset")
         if start > end:
             raise UCFValidationError("start must not be after end")
+        if not isinstance(reject_truncated, bool):
+            raise UCFValidationError("reject_truncated must be a boolean")
         safe_limit = _limit(limit)
         start_text = start.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
         end_text = end.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
@@ -254,11 +351,15 @@ class UCFJournal:
                     ORDER BY observed_at ASC, rowid ASC
                     LIMIT ?
                     """,
-                    (start_text, end_text, safe_limit),
+                    (start_text, end_text, safe_limit + 1),
                 ).fetchall()
         except sqlite3.Error as exc:
             raise JournalError(f"could not read journal at {self.path}: {exc}") from exc
-        return [self._row_to_state(row) for row in rows]
+        if reject_truncated and len(rows) > safe_limit:
+            raise UCFValidationError(
+                f"window contains more than {safe_limit} observations; narrow the time range"
+            )
+        return [self._row_to_state(row) for row in rows[:safe_limit]]
 
     def count(self) -> int:
         try:
@@ -269,16 +370,57 @@ class UCFJournal:
         return int(row[0])
 
     def iter_all(self) -> Iterator[UCFState]:
+        last_observed_at: str | None = None
+        last_rowid = 0
         try:
             with self._connection() as connection:
-                cursor = connection.execute(
-                    "SELECT * FROM observations ORDER BY observed_at ASC, rowid ASC"
-                )
-                while rows := cursor.fetchmany(200):
-                    for row in rows:
-                        yield self._row_to_state(row)
+                row = connection.execute("SELECT MAX(rowid) FROM observations").fetchone()
+                high_water_rowid = int(row[0]) if row[0] is not None else None
         except sqlite3.Error as exc:
             raise JournalError(f"could not export journal at {self.path}: {exc}") from exc
+        if high_water_rowid is None:
+            return
+        while True:
+            try:
+                with self._connection() as connection:
+                    if last_observed_at is None:
+                        rows = connection.execute(
+                            """
+                            SELECT rowid AS export_rowid, * FROM observations
+                            WHERE rowid <= ?
+                            ORDER BY observed_at ASC, rowid ASC
+                            LIMIT ?
+                            """,
+                            (high_water_rowid, _EXPORT_BATCH_SIZE),
+                        ).fetchall()
+                    else:
+                        rows = connection.execute(
+                            """
+                            SELECT rowid AS export_rowid, * FROM observations
+                            WHERE rowid <= ?
+                              AND (observed_at > ? OR (observed_at = ? AND rowid > ?))
+                            ORDER BY observed_at ASC, rowid ASC
+                            LIMIT ?
+                            """,
+                            (
+                                high_water_rowid,
+                                last_observed_at,
+                                last_observed_at,
+                                last_rowid,
+                                _EXPORT_BATCH_SIZE,
+                            ),
+                        ).fetchall()
+                    batch = [
+                        (int(row["export_rowid"]), str(row["observed_at"]), self._row_to_state(row))
+                        for row in rows
+                    ]
+            except sqlite3.Error as exc:
+                raise JournalError(f"could not export journal at {self.path}: {exc}") from exc
+            if not batch:
+                return
+            for _, _, state in batch:
+                yield state
+            last_rowid, last_observed_at, _ = batch[-1]
 
     def summary(self, *, limit: int = 100) -> dict[str, Any]:
         observations = list(reversed(self.recent(limit=limit)))

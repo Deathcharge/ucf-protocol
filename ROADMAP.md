@@ -4,7 +4,10 @@ This roadmap separates four gates: merge, release, publication, and flagship ado
 
 ## Product boundary
 
-Portfolio role: **protocol or specification**. UCF Protocol should remain implementation-independent, versioned, and fixture-driven. Samsarix Unified should prove compatibility through public conformance fixtures rather than private imports or copied application code.
+Portfolio role: **local-first coordination assessment and release-gating protocol**. UCF Protocol
+should remain implementation-independent, versioned, and fixture-driven. It complements tracing and
+evaluation platforms rather than competing as another hosted observability backend. See
+[the competitive research](docs/COMPETITIVE_RESEARCH.md) for the evidence and product boundary.
 
 Current disposition: merge the productized branch as a labeled reference specification. Do not describe the protocol as stable or scientifically validated until its schemas, compatibility rules, and evidence justify those claims.
 
@@ -18,6 +21,9 @@ Current disposition: merge the productized branch as a labeled reference specifi
 
 ## Conformance release
 
+- Add atomic JSONL import, deterministic baseline/candidate comparison, and explicit CI policy gates.
+- Document standard metadata keys for correlating an observation with external traces, sessions,
+  experiments, evaluators, and releases.
 - Publish versioned schemas plus valid, invalid, boundary, and migration fixtures.
 - Build and install the wheel in a clean environment; verify the CLI and artifact contents.
 - Add cross-version property tests for serialization, validation, and round trips.
@@ -30,6 +36,12 @@ Current disposition: merge the productized branch as a labeled reference specifi
 - Prove a round trip between that adapter and one independent client using the same fixture set.
 - Keep authentication, authorization, persistence, privacy, and product policy in the consuming applications rather than the protocol package.
 - Run a small comprehension study: an implementer unfamiliar with the repository should be able to build a conforming message without private guidance.
+
+## Interoperability proof
+
+- Export the six UCF dimensions as generic long-form score records.
+- Publish one adapter example for an established trace/evaluation platform using public contracts.
+- Demonstrate an offline import, compare, gate, and export workflow from a clean environment.
 
 ## Completion evidence
 

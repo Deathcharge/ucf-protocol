@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
+import ucf_protocol.journal as journal_module
 from ucf_protocol import (
     DuplicateEventError,
     JournalError,
@@ -15,6 +17,7 @@ from ucf_protocol import (
     UCFValidationError,
 )
 from ucf_protocol.journal import default_database_path, parse_range_timestamp
+from ucf_protocol.model import PHASES
 
 UTC = timezone.utc
 
@@ -65,6 +68,137 @@ def test_record_read_order_and_duplicate_protection(tmp_path) -> None:
         assert reopened.latest() == second
 
 
+def test_record_many_is_atomic_and_supports_explicit_duplicate_policy(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    existing = state("existing", start)
+    first = state("first", start + timedelta(seconds=1))
+    second = state("second", start + timedelta(seconds=2))
+    with UCFJournal(path) as journal:
+        journal.record(existing)
+        with pytest.raises(DuplicateEventError, match="existing"):
+            journal.record_many([first, existing, second])
+        assert journal.count() == 1
+        assert journal.get("first") is None
+
+        result = journal.record_many([first, existing, first, second], on_duplicate="skip")
+        assert result.to_dict() == {
+            "processed": 4,
+            "recorded": 2,
+            "skipped": 2,
+            "dry_run": False,
+        }
+        assert journal.count() == 3
+
+
+def test_record_many_dry_run_and_validation_leave_journal_unchanged(monkeypatch) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(":memory:") as journal:
+        result = journal.record_many([state("dry-run", start)], dry_run=True)
+        assert result.recorded == 1
+        assert result.dry_run
+        assert journal.count() == 0
+
+        with pytest.raises(UCFValidationError, match="only UCFState"):
+            journal.record_many([object()])  # type: ignore[list-item]
+        with pytest.raises(UCFValidationError, match="on_duplicate"):
+            journal.record_many([], on_duplicate="replace")
+        with pytest.raises(UCFValidationError, match="boolean"):
+            journal.record_many([], dry_run=1)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(journal_module, "_MAX_IMPORT_ROWS", 1)
+        with pytest.raises(UCFValidationError, match="exceed"):
+            journal.record_many([state("one", start), state("two", start)])
+
+
+def test_record_many_rolls_back_memory_transaction_on_interrupt(monkeypatch) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(":memory:") as journal:
+        insert = journal._insert
+
+        def interrupted(connection, observation) -> None:
+            insert(connection, observation)
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(journal, "_insert", interrupted)
+        with pytest.raises(KeyboardInterrupt):
+            journal.record_many([state("interrupted", start)])
+        assert journal.count() == 0
+
+
+def test_iter_all_preserves_order_across_bounded_batches(tmp_path) -> None:
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(tmp_path / "journal.db") as journal:
+        for index in range(205):
+            journal.record(state(f"event-{index:03}", start + timedelta(seconds=index)))
+        assert [item.event_id for item in journal.iter_all()] == [
+            f"event-{index:03}" for index in range(205)
+        ]
+
+
+def test_iter_all_closes_file_connection_before_first_yield(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    with UCFJournal(path) as journal:
+        journal.record(state("event-1", datetime(2026, 7, 28, tzinfo=UTC)))
+
+        opened: list[sqlite3.Connection] = []
+        connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+        iterator = journal.iter_all()
+        assert next(iterator).event_id == "event-1"
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            opened[-1].execute("SELECT 1")
+
+
+def test_connection_closes_when_configuration_fails(monkeypatch, tmp_path) -> None:
+    with UCFJournal(tmp_path / "journal.db") as journal:
+        opened: list[sqlite3.Connection] = []
+        connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        def fail_configuration(connection):
+            raise sqlite3.DatabaseError("synthetic configuration failure")
+
+        monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+        monkeypatch.setattr(journal, "_configure", fail_configuration)
+
+        with (
+            pytest.raises(sqlite3.DatabaseError, match="synthetic configuration failure"),
+            journal._connection(),
+        ):
+            pass
+
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            opened[-1].execute("SELECT 1")
+
+
+def test_iter_all_excludes_rows_inserted_after_export_starts(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(path) as journal:
+        for index in range(205):
+            journal.record(state(f"event-{index:03}", start + timedelta(seconds=index)))
+        iterator = journal.iter_all()
+        exported = [next(iterator) for _ in range(200)]
+        with UCFJournal(path) as writer:
+            writer.record(state("backdated", start - timedelta(days=1)))
+            writer.record(state("future", start + timedelta(days=1)))
+        exported.extend(iterator)
+
+    assert len(exported) == 205
+    assert {item.event_id for item in exported}.isdisjoint({"backdated", "future"})
+
+
 def test_between_and_summary_use_bounded_chronological_data(tmp_path) -> None:
     start = datetime(2026, 7, 28, tzinfo=UTC)
     with UCFJournal(tmp_path / "journal.db") as journal:
@@ -75,6 +209,13 @@ def test_between_and_summary_use_bounded_chronological_data(tmp_path) -> None:
             "event-0",
             "event-1",
         ]
+        with pytest.raises(UCFValidationError, match="more than 1 observations"):
+            journal.between(
+                start,
+                start + timedelta(minutes=1),
+                limit=1,
+                reject_truncated=True,
+            )
         summary = journal.summary(limit=3)
         assert summary["count"] == 3
         assert summary["metrics"]["harmony"]["latest"] == 0.8
@@ -100,6 +241,8 @@ def test_range_requires_aware_ordered_timestamps(tmp_path) -> None:
             journal.between(aware, datetime(2026, 7, 28))
         with pytest.raises(UCFValidationError, match="after"):
             journal.between(aware + timedelta(seconds=1), aware)
+        with pytest.raises(UCFValidationError, match="reject_truncated"):
+            journal.between(aware, aware, reject_truncated=1)  # type: ignore[arg-type]
 
 
 def test_parameter_binding_preserves_sql_metacharacters(tmp_path) -> None:
@@ -143,6 +286,22 @@ def test_incompatible_schema_is_visible(tmp_path) -> None:
     connection.close()
     with pytest.raises(JournalError, match="not supported"):
         UCFJournal(path)
+
+
+def test_journal_phase_constraint_matches_model(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    with UCFJournal(path):
+        connection = sqlite3.connect(path)
+        try:
+            row = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'observations'"
+            ).fetchone()
+        finally:
+            connection.close()
+    assert row is not None
+    match = re.search(r"phase\s+IN\s*\((.*?)\)", str(row[0]), flags=re.IGNORECASE | re.DOTALL)
+    assert match is not None
+    assert re.findall(r"'([^']+)'", match.group(1)) == [name for _, name in PHASES]
 
 
 def test_default_path_honors_explicit_environment(monkeypatch, tmp_path) -> None:

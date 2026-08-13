@@ -1,0 +1,12 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-invalid-missing",
+  "timestamp": "2026-08-08T00:03:00Z",
+  "metrics": {
+    "harmony": 0.6,
+    "resilience": 0.7,
+    "throughput": 0.7,
+    "focus": 0.7,
+    "friction": 0.2
+  }
+}

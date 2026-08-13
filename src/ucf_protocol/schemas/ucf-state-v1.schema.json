@@ -9,12 +9,7 @@
     "schema_version",
     "event_id",
     "timestamp",
-    "phase",
-    "score",
-    "metrics",
-    "context",
-    "agent",
-    "metadata"
+    "metrics"
   ],
   "properties": {
     "schema_version": {
@@ -52,12 +47,20 @@
     "context": {
       "type": ["string", "null"],
       "minLength": 1,
-      "maxLength": 512
+      "maxLength": 512,
+      "allOf": [
+        {"pattern": "\\S"},
+        {"pattern": "^[^\\u0000]*$"}
+      ]
     },
     "agent": {
       "type": ["string", "null"],
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "allOf": [
+        {"pattern": "\\S"},
+        {"pattern": "^[^\\u0000]*$"}
+      ]
     },
     "metadata": {
       "type": "object",

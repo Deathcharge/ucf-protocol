@@ -1,0 +1,13 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-lowercase-utc",
+  "timestamp": "2026-08-08t00:00:00z",
+  "metrics": {
+    "harmony": 0.6,
+    "resilience": 0.7,
+    "throughput": 0.7,
+    "focus": 0.7,
+    "friction": 0.2,
+    "velocity": 0.6
+  }
+}

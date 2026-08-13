@@ -1,0 +1,13 @@
+{
+  "schema_version": "ucf/v1",
+  "event_id": "fixture-legacy-aliases",
+  "timestamp": "2026-08-08T00:05:00Z",
+  "metrics": {
+    "harmony": 0.6,
+    "resilience": 0.7,
+    "prana": 0.7,
+    "drishti": 0.7,
+    "klesha": 0.2,
+    "zoom": 0.6
+  }
+}
