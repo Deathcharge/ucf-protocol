@@ -319,7 +319,12 @@ class UCFJournal:
         return [self._row_to_state(row) for row in rows]
 
     def between(
-        self, start: datetime, end: datetime, *, limit: int = _MAX_QUERY_LIMIT
+        self,
+        start: datetime,
+        end: datetime,
+        *,
+        limit: int = _MAX_QUERY_LIMIT,
+        reject_truncated: bool = False,
     ) -> list[UCFState]:
         if not isinstance(start, datetime):
             raise UCFValidationError("start must be a datetime")
@@ -331,6 +336,8 @@ class UCFJournal:
             raise UCFValidationError("end must include a UTC offset")
         if start > end:
             raise UCFValidationError("start must not be after end")
+        if not isinstance(reject_truncated, bool):
+            raise UCFValidationError("reject_truncated must be a boolean")
         safe_limit = _limit(limit)
         start_text = start.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
         end_text = end.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
@@ -343,11 +350,16 @@ class UCFJournal:
                     ORDER BY observed_at ASC, rowid ASC
                     LIMIT ?
                     """,
-                    (start_text, end_text, safe_limit),
+                    (start_text, end_text, safe_limit + 1),
                 ).fetchall()
         except sqlite3.Error as exc:
             raise JournalError(f"could not read journal at {self.path}: {exc}") from exc
-        return [self._row_to_state(row) for row in rows]
+        if reject_truncated and len(rows) > safe_limit:
+            raise UCFValidationError(
+                f"window contains more than {safe_limit} observations; "
+                "narrow the time range or raise --limit"
+            )
+        return [self._row_to_state(row) for row in rows[:safe_limit]]
 
     def count(self) -> int:
         try:
@@ -360,6 +372,14 @@ class UCFJournal:
     def iter_all(self) -> Iterator[UCFState]:
         last_observed_at: str | None = None
         last_rowid = 0
+        try:
+            with self._connection() as connection:
+                row = connection.execute("SELECT MAX(rowid) FROM observations").fetchone()
+                high_water_rowid = int(row[0]) if row[0] is not None else None
+        except sqlite3.Error as exc:
+            raise JournalError(f"could not export journal at {self.path}: {exc}") from exc
+        if high_water_rowid is None:
+            return
         while True:
             try:
                 with self._connection() as connection:
@@ -367,20 +387,23 @@ class UCFJournal:
                         rows = connection.execute(
                             """
                             SELECT rowid AS export_rowid, * FROM observations
+                            WHERE rowid <= ?
                             ORDER BY observed_at ASC, rowid ASC
                             LIMIT ?
                             """,
-                            (_EXPORT_BATCH_SIZE,),
+                            (high_water_rowid, _EXPORT_BATCH_SIZE),
                         ).fetchall()
                     else:
                         rows = connection.execute(
                             """
                             SELECT rowid AS export_rowid, * FROM observations
-                            WHERE observed_at > ? OR (observed_at = ? AND rowid > ?)
+                            WHERE rowid <= ?
+                              AND (observed_at > ? OR (observed_at = ? AND rowid > ?))
                             ORDER BY observed_at ASC, rowid ASC
                             LIMIT ?
                             """,
                             (
+                                high_water_rowid,
                                 last_observed_at,
                                 last_observed_at,
                                 last_rowid,

@@ -150,7 +150,8 @@ def _read_bounded(path: str, stdin: TextIO, *, maximum: int = _MAX_INPUT_BYTES) 
 def _states_from_jsonl(path: str, stdin: TextIO) -> list[UCFState]:
     value = _read_bounded(path, stdin, maximum=_MAX_IMPORT_BYTES)
     states: list[UCFState] = []
-    for line_number, line in enumerate(value.splitlines(), start=1):
+    for line_number, raw_line in enumerate(value.split("\n"), start=1):
+        line = raw_line.removesuffix("\r")
         if not line.strip():
             continue
         if len(line.encode("utf-8")) > _MAX_INPUT_BYTES:
@@ -291,27 +292,32 @@ def run(
         return 0
 
     database = Path(args.database).expanduser() if args.database else default_database_path()
+    if args.command == "import":
+        states = _states_from_jsonl(args.path, stdin)
+        journal_path: str | Path = (
+            ":memory:" if args.dry_run and not database.exists() else database
+        )
+        with UCFJournal(journal_path) as journal:
+            import_result = journal.record_many(
+                states,
+                on_duplicate=args.on_duplicate,
+                dry_run=args.dry_run,
+            )
+        if args.json:
+            print(json.dumps(import_result.to_dict(), indent=2, sort_keys=True), file=stdout)
+        else:
+            action = "Validated" if import_result.dry_run else "Imported"
+            print(
+                f"{action} {import_result.recorded} observations; "
+                f"skipped {import_result.skipped} duplicates.",
+                file=stdout,
+            )
+        return 0
+
     with UCFJournal(database) as journal:
         if args.command == "init":
             print(f"Journal ready: {journal.path} ({journal.count()} observations)", file=stdout)
             print("Next: ucf record --help", file=stdout)
-            return 0
-
-        if args.command == "import":
-            import_result = journal.record_many(
-                _states_from_jsonl(args.path, stdin),
-                on_duplicate=args.on_duplicate,
-                dry_run=args.dry_run,
-            )
-            if args.json:
-                print(json.dumps(import_result.to_dict(), indent=2, sort_keys=True), file=stdout)
-            else:
-                action = "Validated" if import_result.dry_run else "Imported"
-                print(
-                    f"{action} {import_result.recorded} observations; "
-                    f"skipped {import_result.skipped} duplicates.",
-                    file=stdout,
-                )
             return 0
 
         if args.command == "record":
@@ -383,11 +389,13 @@ def run(
                 parse_timestamp(args.baseline_start),
                 parse_timestamp(args.baseline_end),
                 limit=args.limit,
+                reject_truncated=True,
             )
             candidate = journal.between(
                 parse_timestamp(args.candidate_start),
                 parse_timestamp(args.candidate_end),
                 limit=args.limit,
+                reject_truncated=True,
             )
             comparison = compare_states(baseline, candidate)
             if args.json:

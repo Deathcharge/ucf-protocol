@@ -156,6 +156,23 @@ def test_iter_all_closes_file_connection_before_first_yield(monkeypatch, tmp_pat
             opened[-1].execute("SELECT 1")
 
 
+def test_iter_all_excludes_rows_inserted_after_export_starts(tmp_path) -> None:
+    path = tmp_path / "journal.db"
+    start = datetime(2026, 7, 28, tzinfo=UTC)
+    with UCFJournal(path) as journal:
+        for index in range(205):
+            journal.record(state(f"event-{index:03}", start + timedelta(seconds=index)))
+        iterator = journal.iter_all()
+        exported = [next(iterator) for _ in range(200)]
+        with UCFJournal(path) as writer:
+            writer.record(state("backdated", start - timedelta(days=1)))
+            writer.record(state("future", start + timedelta(days=1)))
+        exported.extend(iterator)
+
+    assert len(exported) == 205
+    assert {item.event_id for item in exported}.isdisjoint({"backdated", "future"})
+
+
 def test_between_and_summary_use_bounded_chronological_data(tmp_path) -> None:
     start = datetime(2026, 7, 28, tzinfo=UTC)
     with UCFJournal(tmp_path / "journal.db") as journal:
@@ -166,6 +183,13 @@ def test_between_and_summary_use_bounded_chronological_data(tmp_path) -> None:
             "event-0",
             "event-1",
         ]
+        with pytest.raises(UCFValidationError, match="more than 1 observations"):
+            journal.between(
+                start,
+                start + timedelta(minutes=1),
+                limit=1,
+                reject_truncated=True,
+            )
         summary = journal.summary(limit=3)
         assert summary["count"] == 3
         assert summary["metrics"]["harmony"]["latest"] == 0.8
@@ -191,6 +215,8 @@ def test_range_requires_aware_ordered_timestamps(tmp_path) -> None:
             journal.between(aware, datetime(2026, 7, 28))
         with pytest.raises(UCFValidationError, match="after"):
             journal.between(aware + timedelta(seconds=1), aware)
+        with pytest.raises(UCFValidationError, match="reject_truncated"):
+            journal.between(aware, aware, reject_truncated=1)  # type: ignore[arg-type]
 
 
 def test_parameter_binding_preserves_sql_metacharacters(tmp_path) -> None:

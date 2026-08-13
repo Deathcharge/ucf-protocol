@@ -63,13 +63,17 @@ ucf --database assessments.db import observations.jsonl --on-duplicate skip --js
 ```
 
 The result contains `processed`, `recorded`, `skipped`, and `dry_run`. A dry run's `recorded` value
-means rows that would be inserted; the journal remains unchanged.
+means rows that would be inserted; the journal remains unchanged. A dry run targeting a journal that
+does not yet exist validates against an in-memory journal and does not create the database or parent
+directories. Malformed JSONL is rejected before the journal is opened.
 
 ### Compare and gate a candidate
 
 `compare` uses inclusive, timezone-aware ISO 8601 windows and reports candidate-minus-baseline
 deltas. Raw friction delta preserves the source values; `directional_metrics.friction` reverses its
-sign so every positive directional delta means improvement.
+sign so every positive directional delta means improvement. Comparison fails closed if either window
+contains more rows than `--limit`; narrow the time range or raise the limit instead of comparing a
+silent prefix.
 
 ```console
 ucf --database assessments.db compare \
@@ -113,12 +117,16 @@ focus, and velocity; friction is a maximum because lower values are better.
 }
 ```
 
-The timestamp must include a UTC offset and is normalized to UTC. Unknown top-level and metric fields
-are rejected. Input requires `schema_version`, `event_id`, `timestamp`, and `metrics`. `phase` and
+The timestamp must include a UTC offset and is normalized to UTC. Unknown top-level fields and metric
+fields other than the documented legacy aliases are rejected. Input requires `schema_version`,
+`event_id`, `timestamp`, and `metrics`. `phase` and
 `score` are optional derived cross-checks; `context`, `agent`, and `metadata` default when omitted.
 Normalized output includes every field. The packaged schema is at
 `ucf_protocol/schemas/ucf-state-v1.schema.json`; executable validation additionally enforces metadata
-byte size/depth and agreement of derived fields.
+byte size/depth and agreement of derived fields. The schema defines the canonical exchange shape. The
+Python parser additionally accepts the legacy metric aliases `prana`, `drishti`, `klesha`, and `zoom`
+at its compatibility boundary and normalizes them to canonical names; alias-bearing input is therefore
+parser-compatible but not schema-conformant.
 
 ## Python API
 
@@ -179,7 +187,9 @@ copied into correlation metadata.
 
 ## Packaged conformance fixtures
 
-The installed package includes `ucf_protocol/fixtures/manifest.json` plus valid, invalid, and
-boundary examples. Consumers can load them with `importlib.resources` and verify their independent
-implementation against each manifest expectation. The fixtures exercise minimal input, external
-correlation metadata, metric endpoints, a missing required metric, and a derived-phase mismatch.
+The installed package includes `ucf_protocol/fixtures/manifest.json` plus valid, invalid, boundary,
+and compatibility examples. Consumers can load them with `importlib.resources` and independently
+verify both `expect` (the executable parser) and `schema_expect` (the canonical Draft 2020-12 schema).
+The fixtures exercise minimal input, external correlation metadata, metric endpoints, legacy aliases,
+invalid text, a missing required metric, and a derived-phase mismatch that only executable validation
+can detect.

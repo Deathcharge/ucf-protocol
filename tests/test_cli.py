@@ -200,6 +200,7 @@ def test_jsonl_import_is_atomic_dry_runnable_and_duplicate_aware(tmp_path) -> No
         "skipped": 0,
     }
     assert stderr == ""
+    assert not destination.exists()
     assert invoke(["--database", str(destination), "history", "--json"])[1].strip() == "[]"
 
     code, output, stderr = invoke(["--database", str(destination), "import", "-"], stdin=jsonl)
@@ -227,14 +228,42 @@ def test_jsonl_import_rejects_empty_bad_and_oversized_lines(tmp_path) -> None:
     code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin="\n")
     assert code == EXIT_INVALID
     assert "at least one" in stderr
+    assert not path.exists()
 
     code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin='{}\n{"bad":')
     assert code == EXIT_INVALID
     assert "line 1" in stderr
+    assert not path.exists()
 
     code, _, stderr = invoke(["--database", str(path), "import", "-"], stdin=" " * 65_537 + "x\n")
     assert code == EXIT_INVALID
     assert "line 1" in stderr
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("separator", ("\u0085", "\u2028", "\u2029"))
+def test_exported_jsonl_round_trips_unicode_separators(tmp_path: Path, separator: str) -> None:
+    source = tmp_path / "source.db"
+    arguments = record_args(source)
+    arguments[arguments.index("release check")] = f"before{separator}after"
+    arguments[arguments.index('{"source":"cli"}')] = json.dumps(
+        {"separator": f"before{separator}after"}, ensure_ascii=False
+    )
+    assert invoke(arguments)[0] == 0
+
+    code, exported, stderr = invoke(["--database", str(source), "export"])
+    assert code == 0
+    assert exported.count("\n") == 1
+    assert stderr == ""
+
+    destination = tmp_path / "destination.db"
+    code, _, stderr = invoke(["--database", str(destination), "import", "-"], stdin=exported)
+    assert code == 0
+    assert stderr == ""
+    _, imported, _ = invoke(["--database", str(destination), "status", "--json"])
+    payload = json.loads(imported)
+    assert payload["context"] == f"before{separator}after"
+    assert payload["metadata"]["separator"] == f"before{separator}after"
 
 
 def test_module_entrypoint_reports_version_from_outside_repo(tmp_path) -> None:
@@ -411,3 +440,28 @@ def test_compare_and_gate_reject_empty_or_invalid_configuration(tmp_path) -> Non
     code, _, stderr = invoke(["--database", str(path), "check"])
     assert code == EXIT_INVALID
     assert "threshold" in stderr
+
+
+def test_compare_rejects_truncated_windows(tmp_path: Path) -> None:
+    path = tmp_path / "journal.db"
+    assert invoke(record_args(path, "first"))[0] == 0
+    assert invoke(record_args(path, "second"))[0] == 0
+    code, _, stderr = invoke(
+        [
+            "--database",
+            str(path),
+            "compare",
+            "--baseline-start",
+            "2000-01-01T00:00:00Z",
+            "--baseline-end",
+            "2100-01-01T00:00:00Z",
+            "--candidate-start",
+            "2000-01-01T00:00:00Z",
+            "--candidate-end",
+            "2100-01-01T00:00:00Z",
+            "--limit",
+            "1",
+        ]
+    )
+    assert code == EXIT_INVALID
+    assert "more than 1 observations" in stderr

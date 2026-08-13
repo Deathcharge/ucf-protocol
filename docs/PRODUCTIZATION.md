@@ -182,7 +182,7 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | `python -m build --outdir .artifacts/dist-final` | Passed; isolated sdist-to-wheel build. |
 | `python -m twine check .artifacts/dist-final/*` | Passed for wheel and sdist. |
 | Clean-wheel `pip check` | Passed; no broken requirements and no runtime dependencies. |
-| Installed `ucf --version` / `--help` | Passed; reported `1.0.0rc1` and all seven commands. |
+| Installed `ucf --version` / `--help` | Passed; reported `1.0.0rc1` and all ten commands. |
 | Installed record/status/export/schema journey | Passed against a fresh SQLite journal. |
 | `python examples/basic_journey.py` | Passed using the installed public API. |
 
