@@ -119,8 +119,9 @@ class UCFJournal:
             yield self._memory_connection
             return
 
-        connection = self._configure(sqlite3.connect(self.path, timeout=self.timeout))
+        connection = sqlite3.connect(self.path, timeout=self.timeout)
         try:
+            self._configure(connection)
             yield connection
         finally:
             connection.close()

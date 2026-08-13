@@ -156,6 +156,32 @@ def test_iter_all_closes_file_connection_before_first_yield(monkeypatch, tmp_pat
             opened[-1].execute("SELECT 1")
 
 
+def test_connection_closes_when_configuration_fails(monkeypatch, tmp_path) -> None:
+    with UCFJournal(tmp_path / "journal.db") as journal:
+        opened: list[sqlite3.Connection] = []
+        connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        def fail_configuration(connection):
+            raise sqlite3.DatabaseError("synthetic configuration failure")
+
+        monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+        monkeypatch.setattr(journal, "_configure", fail_configuration)
+
+        with (
+            pytest.raises(sqlite3.DatabaseError, match="synthetic configuration failure"),
+            journal._connection(),
+        ):
+            pass
+
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            opened[-1].execute("SELECT 1")
+
+
 def test_iter_all_excludes_rows_inserted_after_export_starts(tmp_path) -> None:
     path = tmp_path / "journal.db"
     start = datetime(2026, 7, 28, tzinfo=UTC)
