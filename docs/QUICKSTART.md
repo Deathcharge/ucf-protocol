@@ -72,6 +72,16 @@ Existing files are not replaced unless `--force` is present. File export writes 
 flushes it, and atomically replaces the destination when the operating system supports the standard
 same-filesystem rename guarantee.
 
+Validate that export as a batch without changing another journal, then import it atomically:
+
+```console
+ucf --database copy.db import observations.jsonl --dry-run --json
+ucf --database copy.db import observations.jsonl --json
+```
+
+Malformed input or a duplicate event ID rolls back the default transaction completely. Use
+`--on-duplicate skip` only when ignoring existing IDs is intentional.
+
 ## Default database location
 
 Omitting `--database` uses `UCF_DATABASE` when set. Otherwise UCF uses the platform user-data

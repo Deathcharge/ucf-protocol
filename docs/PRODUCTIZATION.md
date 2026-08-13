@@ -1,6 +1,6 @@
 # UCF Protocol productization record
 
-Last updated: 2026-07-28
+Last updated: 2026-08-08
 
 ## Current repository assessment
 
@@ -141,7 +141,7 @@ There were no real repository lint, format, or type-check configurations to run 
 - Replaced the non-installable flat modules with a typed `src/` package and a real console entry point.
 - Implemented immutable bounded observations, a packaged JSON Schema, SQLite persistence, summaries, strict JSON import, and safe JSONL export.
 - Added explicit duplicate, empty, invalid, storage, broken-pipe, and interruption behavior.
-- Replaced non-asserting tests with 86 focused tests and a 90% branch-coverage gate.
+- Replaced non-asserting tests with 91 focused tests and a 90% branch-coverage gate.
 - Removed 15,000+ lines of dead modules, placeholders, unrelated infrastructure guides, and unsupported examples while preserving legal and repository instruction files.
 - Added pinned least-privilege CI across Python 3.10-3.14, dependency update configuration, and a distribution smoke job.
 - Rewrote product, API, metrics, architecture, operations, security, contribution, community, and ethical guidance to match implemented behavior.
@@ -152,6 +152,21 @@ There were no real repository lint, format, or type-check configurations to run 
 - Published the productization commits to draft pull request #6 and passed the hosted GitHub Actions
   matrix on Python 3.10 through 3.14 plus the distribution smoke job.
 - Completed a standard repository-wide security scan over all 36 final files. One local export race candidate was validated and suppressed because no privilege or tenant boundary exists; no reportable vulnerability or deferred security work remained. The canonical scan report is outside the repository under the system temporary security-scan directory and is linked in the delivery handoff.
+- Verified and addressed all seven inline findings from the merged productization review: disabled
+  persisted CI credentials, documented example setup, bounded file reads, closed export connections
+  between bounded batches, removed phase-definition drift, aligned schema/parser requirements, and
+  normalized invalid message-type errors. Also corrected the commercial-license narrative so it does
+  not contradict the Apache-2.0 package grant.
+- Researched current evaluation and tracing platforms, selected a complementary local-first
+  assessment and release-gating wedge, and documented the product boundary and non-goals.
+- Added deterministic baseline/candidate comparisons, direction-aware metric deltas, explicit
+  average-value quality policies, stable machine-readable results, and CI exit code 5.
+- Documented a vendor-neutral correlation metadata convention for traces, spans, sessions,
+  experiments, releases, and evaluators.
+- Added bounded atomic JSONL import with rollback-on-error, dry-run, and explicit duplicate
+  policies; packaged a manifest-driven valid, invalid, boundary, and correlation fixture suite.
+- Added and executed an end-to-end release-gate example, and hardened simultaneous first-open
+  SQLite initialization after the full suite exposed a WAL mode-change race.
 
 ## Final local verification
 
@@ -160,14 +175,14 @@ Run on Windows with Python 3.11.9 in an isolated development environment:
 | Check | Result |
 | --- | --- |
 | `python -m compileall -q src tests examples` | Passed. |
-| `ruff format --check src tests examples` | Passed; 13 files already formatted. |
+| `ruff format --check src tests examples` | Passed; 17 files already formatted. |
 | `ruff check src tests examples` | Passed; no findings. |
-| `mypy src` | Passed in strict mode; 6 source files checked. |
-| `pytest` | Passed: 86 tests, 94.66% branch coverage. |
+| `mypy src` | Passed in strict mode; 7 source files checked. |
+| `pytest` | Passed: 113 tests, 94.24% branch coverage. |
 | `python -m build --outdir .artifacts/dist-final` | Passed; isolated sdist-to-wheel build. |
 | `python -m twine check .artifacts/dist-final/*` | Passed for wheel and sdist. |
 | Clean-wheel `pip check` | Passed; no broken requirements and no runtime dependencies. |
-| Installed `ucf --version` / `--help` | Passed; reported `1.0.0rc1` and all seven commands. |
+| Installed `ucf --version` / `--help` | Passed; reported `1.0.0rc1` and all ten commands. |
 | Installed record/status/export/schema journey | Passed against a fresh SQLite journal. |
 | `python examples/basic_journey.py` | Passed using the installed public API. |
 

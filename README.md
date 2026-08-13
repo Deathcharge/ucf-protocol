@@ -55,11 +55,17 @@ ucf --database ucf-demo.db status
 ucf --database ucf-demo.db history --json
 ucf --database ucf-demo.db summary
 ucf --database ucf-demo.db export --output observations.jsonl
+ucf --database imported.db import observations.jsonl --dry-run --json
+ucf --database ucf-demo.db check --min-score 0.60 --max-friction 0.30
 ```
 
 `init` is optional because every journal command initializes the database safely. Running
 `status` against an empty journal returns an actionable message and exit code 3. Run
 `ucf <command> --help` for command-specific options.
+
+For release evaluation, record baseline and candidate observations with external trace or release
+identifiers in metadata, use `ucf compare` for transparent window deltas, and use `ucf check` as a
+deterministic CI gate. See the [CLI and Python API](docs/API.md) for the complete contract.
 
 ## Python API
 
@@ -99,6 +105,8 @@ signals are positive. The exchange contract is `ucf/v1`; its JSON Schema ships i
 - [Local operation and release](docs/DEPLOYMENT.md)
 - [Security policy](SECURITY.md)
 - [Productization evidence](docs/PRODUCTIZATION.md)
+- [Competitive research and product wedge](docs/COMPETITIVE_RESEARCH.md)
+- [End-to-end release gate example](examples/release_gate.py)
 
 ## Development
 
@@ -116,7 +124,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for compatibility and change requirements
 
 ## License and release status
 
-Package metadata identifies the reusable Python core as Apache-2.0; see [LICENSE](LICENSE).
-The repository also contains pre-existing [commercial licensing guidance](LICENSING.md) and a
-[proprietary license](LICENSE.PROPRIETARY). Their public-release positioning requires owner/legal
-confirmation and is not resolved by this technical release candidate.
+Package metadata identifies the reusable Python core as Apache-2.0; see [LICENSE](LICENSE). Apache-2.0
+permits commercial use subject to its terms; no paid license is required merely to use UCF Protocol
+commercially. Samsarix LLC may separately offer optional support, consulting, indemnification, or
+alternative terms. See [LICENSING.md](LICENSING.md) for the non-binding commercial-services position
+and [LICENSE.PROPRIETARY](LICENSE.PROPRIETARY) for the repository's optional agreement template.

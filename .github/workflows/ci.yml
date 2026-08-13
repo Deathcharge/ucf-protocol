@@ -24,8 +24,10 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -46,8 +48,10 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip
@@ -64,6 +68,8 @@ jobs:
           smoke-venv/bin/ucf --version
           smoke-venv/bin/ucf --database smoke.db record --event-id smoke-1 --harmony 0.6 --resilience 0.7 --throughput 0.7 --focus 0.8 --friction 0.2 --velocity 0.6
           smoke-venv/bin/ucf --database smoke.db status --json
-          smoke-venv/bin/python -c "from importlib.resources import files; assert files('ucf_protocol').joinpath('schemas/ucf-state-v1.schema.json').is_file()"
-      - name: Run the shipped example
-        run: smoke-venv/bin/python examples/basic_journey.py --database example-smoke.db
+          smoke-venv/bin/python -c "from importlib.resources import files; assert files('ucf_protocol').joinpath('schemas/ucf-state-v1.schema.json').is_file(); assert files('ucf_protocol').joinpath('fixtures/manifest.json').is_file()"
+      - name: Run the shipped examples
+        run: |
+          smoke-venv/bin/python examples/basic_journey.py --database example-smoke.db
+          smoke-venv/bin/python examples/release_gate.py --database release-gate-smoke.db
