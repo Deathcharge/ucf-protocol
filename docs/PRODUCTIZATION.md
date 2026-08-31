@@ -1,5 +1,15 @@
 # UCF Protocol productization record
 
+## 2026-08-31 interoperability checkpoint
+
+PR #11 is merged at `c74dc18`; its follow-up persistence and timestamp fixes are preserved.
+Added public `score_records()` and `export --format scores`: six raw scores with stable IDs,
+direction flags, and allowlisted correlation identifiers. No external service is contacted and
+free-text context, actor labels, and unrelated metadata are not exported. Tests cover identity,
+direction, privacy filtering, invalid correlation values, detached output, and file/stdout CLI
+equivalence. A provider adapter and final release audit remain outstanding; this checkpoint does
+not establish live third-party interoperability or validated market demand.
+
 Last updated: 2026-08-08
 
 ## Current repository assessment

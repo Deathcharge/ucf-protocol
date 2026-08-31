@@ -31,6 +31,7 @@ def test_public_api_and_version_are_deliberate() -> None:
         "phase_for_harmony",
         "state_from_json",
         "summarize_states",
+        "score_records",
     ]
 
 

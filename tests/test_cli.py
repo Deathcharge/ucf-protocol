@@ -284,6 +284,22 @@ def test_module_entrypoint_reports_version_from_outside_repo(tmp_path) -> None:
     assert result.stderr == ""
 
 
+def test_score_export_to_stdout_and_file(tmp_path) -> None:
+    database = tmp_path / "scores.db"
+    assert invoke(record_args(database))[0] == 0
+    args = ["--database", str(database), "export", "--format", "scores"]
+    code, output, error = invoke(args)
+    assert code == 0 and not error
+    rows = [json.loads(line) for line in output.splitlines()]
+    assert len(rows) == 6
+    assert rows[0]["schema_version"] == "ucf/scores/v1"
+    destination = tmp_path / "scores.jsonl"
+    code, message, error = invoke([*args, "--output", str(destination)])
+    assert code == 0 and not error
+    assert "Exported 6 scores" in message
+    assert destination.read_text(encoding="utf-8") == output
+
+
 def test_human_and_json_output_branches(tmp_path) -> None:
     path = tmp_path / "journal.db"
     json_args = record_args(path, "generated")
