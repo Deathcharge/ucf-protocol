@@ -300,6 +300,33 @@ def test_score_export_to_stdout_and_file(tmp_path) -> None:
     assert destination.read_text(encoding="utf-8") == output
 
 
+def test_score_export_failure_preserves_destination_and_cleans_temporary_file(tmp_path) -> None:
+    database = tmp_path / "scores.db"
+    assert invoke(record_args(database, "valid"))[0] == 0
+    invalid = record_args(database, "invalid-correlation")
+    invalid[invalid.index("--metadata") + 1] = '{"correlation":{"trace_id":42}}'
+    assert invoke(invalid)[0] == 0
+    destination = tmp_path / "scores.jsonl"
+    destination.write_text("previous export\n", encoding="utf-8")
+    code, output, error = invoke(
+        [
+            "--database",
+            str(database),
+            "export",
+            "--format",
+            "scores",
+            "--output",
+            str(destination),
+            "--force",
+        ]
+    )
+    assert code == EXIT_INVALID
+    assert output == ""
+    assert "trace_id" in error
+    assert destination.read_text(encoding="utf-8") == "previous export\n"
+    assert list(tmp_path.glob(".scores.jsonl.*.tmp")) == []
+
+
 def test_human_and_json_output_branches(tmp_path) -> None:
     path = tmp_path / "journal.db"
     json_args = record_args(path, "generated")

@@ -1,5 +1,14 @@
 # UCF Protocol productization record
 
+## Score export release checks (2026-08-31)
+
+The full local suite passes 126 tests with 94.59% branch coverage. The added regression verifies
+that malformed correlation data leaves an existing export untouched even with `--force`, and
+cleans temporary files. Distribution CI now exercises score export from the installed wheel and
+checks that the score schema ships. Hosted checks passed on `a9ed1bc`; the following test/CI change
+must pass on its own head before merge. CodeRabbit reports that manual review is required for this
+OSS repository: its success status is a skipped review, not an approval.
+
 ### Offline provider mapping verification
 
 Added `examples/langfuse_adapter.py` against Langfuse's documented `create_score` signature
