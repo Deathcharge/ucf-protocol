@@ -15,7 +15,7 @@ Added `examples/langfuse_adapter.py` against Langfuse's documented `create_score
 (inspected 2026-08-31). It previews calls without importing a vendor SDK or transmitting data.
 The adapter has trace/span, session, missing-target, stable-ID and score-direction tests; CI also
 runs the preview with the installed wheel. Local checks: Ruff format/lint and strict mypy pass;
-`pytest -q` passes 124 tests with 94.44% branch coverage. Live delivery has not been exercised and
+`pytest -q` passes 126 tests with 94.59% branch coverage at `e217444`. Live delivery has not been exercised and
 requires a consuming application's configured client and real project identifiers.
 
 ## 2026-08-31 interoperability checkpoint
