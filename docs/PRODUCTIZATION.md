@@ -1,5 +1,14 @@
 # UCF Protocol productization record
 
+### Offline provider mapping verification
+
+Added `examples/langfuse_adapter.py` against Langfuse's documented `create_score` signature
+(inspected 2026-08-31). It previews calls without importing a vendor SDK or transmitting data.
+The adapter has trace/span, session, missing-target, stable-ID and score-direction tests; CI also
+runs the preview with the installed wheel. Local checks: Ruff format/lint and strict mypy pass;
+`pytest -q` passes 124 tests with 94.44% branch coverage. Live delivery has not been exercised and
+requires a consuming application's configured client and real project identifiers.
+
 ## 2026-08-31 interoperability checkpoint
 
 PR #11 is merged at `c74dc18`; its follow-up persistence and timestamp fixes are preserved.
