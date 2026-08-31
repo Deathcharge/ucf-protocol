@@ -16,12 +16,12 @@ Added public `score_records()` and `export --format scores`: six raw scores with
 direction flags, and allowlisted correlation identifiers. No external service is contacted and
 free-text context, actor labels, and unrelated metadata are not exported. Tests cover identity,
 direction, privacy filtering, invalid correlation values, detached output, and file/stdout CLI
-equivalence. A provider adapter and final release audit remain outstanding; this checkpoint does
+equivalence. The offline provider adapter is now implemented; final release audit remains. This does
 not establish live third-party interoperability or validated market demand.
 
-Last updated: 2026-08-08
+Last updated: 2026-08-31
 
-## Current repository assessment
+## Historical pre-productization assessment
 
 The repository contains useful ideas and partial implementations for six coordination-health signals, text/JSON formatting, and SQLite history. Its current release claims are not supported by the checked-in product:
 
@@ -97,7 +97,7 @@ Run on Windows with Python 3.11.9 before implementation:
 
 There were no real repository lint, format, or type-check configurations to run at baseline. The README's claimed GitHub Actions, flake8, mypy, Bandit, Safety, and Codecov pipeline was absent.
 
-## Findings and priorities
+## Historical baseline findings and priorities
 
 ### P0
 

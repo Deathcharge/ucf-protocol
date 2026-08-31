@@ -1,9 +1,27 @@
 from __future__ import annotations
 
+import json
+from importlib.resources import files
+
 import pytest
+from jsonschema import Draft202012Validator, FormatChecker
 
 from ucf_protocol import METRIC_NAMES, MetricSet, UCFState, UCFValidationError
 from ucf_protocol.scores import score_records
+
+
+def test_packaged_score_schema_enforces_values_and_direction() -> None:
+    schema = json.loads(
+        files("ucf_protocol").joinpath("schemas/ucf-score-v1.schema.json").read_text()
+    )
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    rows = score_records(UCFState(MetricSet(0, 1, 0, 1, 1, 0)))
+    for row in rows:
+        validator.validate(row)
+        assert not validator.is_valid({**row, "higher_is_better": not row["higher_is_better"]})
+        assert not validator.is_valid({**row, "value": 1.1})
+        assert not validator.is_valid({**row, "correlation": {"secret": "not allowed"}})
 
 
 def test_scores_preserve_identity_direction_and_only_allowlisted_metadata() -> None:

@@ -63,7 +63,9 @@ Included correlation values must be non-blank strings. No network calls are made
 can themselves be sensitive: review the output before sending it to an external platform.
 
 Score output is an adapter projection, not an observation archive: `ucf import` accepts observation
-JSONL only. Use the default export format for backups and round trips. File exports are atomic;
+JSONL only. Its packaged schema is `ucf_protocol/schemas/ucf-score-v1.schema.json`;
+the `id` is additionally defined as the source event ID followed by `:` and the metric name.
+Use the default export format for backups and round trips. File exports are atomic;
 stdout can contain partial output if a later row is invalid, so consumers must check the exit code.
 
 ### Atomic JSONL import
