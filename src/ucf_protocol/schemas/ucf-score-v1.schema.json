@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UCF portable score v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "event_id", "timestamp", "name", "value", "higher_is_better", "correlation"],
+  "properties": {
+    "schema_version": {"const": "ucf/scores/v1"},
+    "id": {"type": "string", "minLength": 1},
+    "event_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "name": {"enum": ["ucf.harmony", "ucf.resilience", "ucf.throughput", "ucf.focus", "ucf.friction", "ucf.velocity"]},
+    "value": {"type": "number", "minimum": 0, "maximum": 1},
+    "higher_is_better": {"type": "boolean"},
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trace_id": {"type": "string", "pattern": "\\S"},
+        "span_id": {"type": "string", "pattern": "\\S"},
+        "session_id": {"type": "string", "pattern": "\\S"},
+        "experiment_id": {"type": "string", "pattern": "\\S"},
+        "release_id": {"type": "string", "pattern": "\\S"},
+        "evaluator_id": {"type": "string", "pattern": "\\S"}
+      }
+    }
+  },
+  "if": {"properties": {"name": {"const": "ucf.friction"}}},
+  "then": {"properties": {"higher_is_better": {"const": false}}},
+  "else": {"properties": {"higher_is_better": {"const": true}}}
+}

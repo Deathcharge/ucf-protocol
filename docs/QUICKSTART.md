@@ -75,8 +75,8 @@ same-filesystem rename guarantee.
 Validate that export as a batch without changing another journal, then import it atomically:
 
 ```console
-ucf --database copy.db import observations.jsonl --dry-run --json
-ucf --database copy.db import observations.jsonl --json
+ucf --database batch-copy.db import observations.jsonl --dry-run --json
+ucf --database batch-copy.db import observations.jsonl --json
 ```
 
 Malformed input or a duplicate event ID rolls back the default transaction completely. Use

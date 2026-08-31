@@ -6,6 +6,9 @@ This project follows [Semantic Versioning](https://semver.org/). Dates use ISO 8
 
 ### Added
 
+- Local-only long-form score export with stable per-metric IDs, explicit score direction, and
+  allowlisted correlation metadata for evaluation-platform adapters.
+
 - Installable, typed `src/ucf_protocol` package with no third-party runtime dependencies.
 - Strict immutable `ucf/v1` observation model and packaged JSON Schema 2020-12 contract.
 - SQLite journal with duplicate-event protection, bounded queries, summary, and JSONL iteration.

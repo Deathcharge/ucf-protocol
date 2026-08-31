@@ -21,6 +21,7 @@ from .model import (
     phase_for_harmony,
     state_from_json,
 )
+from .scores import score_records
 
 __all__ = [
     "LEGACY_ALIASES",
@@ -44,4 +45,5 @@ __all__ = [
     "phase_for_harmony",
     "state_from_json",
     "summarize_states",
+    "score_records",
 ]

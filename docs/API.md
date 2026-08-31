@@ -50,6 +50,24 @@ Argument parser errors use argparse's standard exit code 2.
 - Export does not overwrite an existing path without `--force`.
 - SQL values use parameter binding. Event IDs are primary keys.
 
+### Portable score export
+
+`ucf --database assessments.db export --format scores --output scores.jsonl` emits six numeric
+records per observation in `ucf/scores/v1` format. Python callers can use `score_records(state)`.
+Each row contains a stable `event_id:metric` ID, source event ID and timestamp, `ucf.metric` name,
+raw value, `higher_is_better` flag, and correlation identifiers. Friction remains the raw value;
+its direction flag is false. Repeated exports preserve IDs so adapters can implement idempotency.
+
+Only documented correlation keys are copied. Context, actor labels, and other metadata are omitted.
+Included correlation values must be non-blank strings. No network calls are made. Correlation IDs
+can themselves be sensitive: review the output before sending it to an external platform.
+
+Score output is an adapter projection, not an observation archive: `ucf import` accepts observation
+JSONL only. Its packaged schema is `ucf_protocol/schemas/ucf-score-v1.schema.json`;
+the `id` is additionally defined as the source event ID followed by `:` and the metric name.
+Use the default export format for backups and round trips. File exports are atomic;
+stdout can contain partial output if a later row is invalid, so consumers must check the exit code.
+
 ### Atomic JSONL import
 
 Import consumes one complete `ucf/v1` object per non-blank line. The default duplicate policy is

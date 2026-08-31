@@ -7,7 +7,7 @@ import json
 import os
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -22,6 +22,7 @@ from .model import (
     parse_timestamp,
     state_from_json,
 )
+from .scores import score_records
 
 EXIT_ERROR = 1
 EXIT_INVALID = 2
@@ -119,6 +120,7 @@ def _build_parser() -> argparse.ArgumentParser:
     import_command.add_argument("--json", action="store_true", help="Print machine-readable JSON")
 
     export = subparsers.add_parser("export", help="Export the journal as JSON Lines")
+    export.add_argument("--format", choices=("observations", "scores"), default="observations")
     export.add_argument("--output", metavar="PATH", help="Destination file (default: stdout)")
     export.add_argument("--force", action="store_true", help="Replace an existing destination file")
     return parser
@@ -233,11 +235,26 @@ def _print_state(state: UCFState, *, as_json: bool, stdout: TextIO) -> None:
         print(f"Context: {state.context}", file=stdout)
 
 
-def _write_export(journal: UCFJournal, output: str | None, force: bool, stdout: TextIO) -> int:
+def _export_lines(journal: UCFJournal, export_format: str) -> Iterator[str]:
+    for state in journal.iter_all():
+        if export_format == "scores":
+            for row in score_records(state):
+                yield json.dumps(row, ensure_ascii=False, allow_nan=False, sort_keys=True)
+        else:
+            yield state.to_json(indent=None)
+
+
+def _write_export(
+    journal: UCFJournal,
+    output: str | None,
+    force: bool,
+    stdout: TextIO,
+    export_format: str = "observations",
+) -> int:
     if output is None:
         count = 0
-        for state in journal.iter_all():
-            print(state.to_json(indent=None), file=stdout)
+        for line in _export_lines(journal, export_format):
+            print(line, file=stdout)
             count += 1
         return count
 
@@ -258,8 +275,8 @@ def _write_export(journal: UCFJournal, output: str | None, force: bool, stdout: 
         ) as handle:
             temporary_path = Path(handle.name)
             count = 0
-            for state in journal.iter_all():
-                handle.write(state.to_json(indent=None))
+            for line in _export_lines(journal, export_format):
+                handle.write(line)
                 handle.write("\n")
                 count += 1
             handle.flush()
@@ -441,10 +458,10 @@ def run(
             return 0 if gate_result.passed else EXIT_GATE_FAILED
 
         if args.command == "export":
-            count = _write_export(journal, args.output, args.force, stdout)
+            count = _write_export(journal, args.output, args.force, stdout, args.format)
             if args.output:
                 print(
-                    f"Exported {count} observations to {Path(args.output).expanduser()}",
+                    f"Exported {count} {args.format} to {Path(args.output).expanduser()}",
                     file=stdout,
                 )
             return 0

@@ -61,6 +61,7 @@ jobs:
         run: |
           python -m build
           python -m twine check dist/*
+          python -c "import glob, tarfile; archive=tarfile.open(glob.glob('dist/*.tar.gz')[0]); names=archive.getnames(); assert any(n.endswith('/examples/langfuse_adapter.py') for n in names); assert any(n.endswith('/docs/API.md') for n in names)"
       - name: Install and exercise the wheel
         run: |
           python -m venv smoke-venv
@@ -68,8 +69,11 @@ jobs:
           smoke-venv/bin/ucf --version
           smoke-venv/bin/ucf --database smoke.db record --event-id smoke-1 --harmony 0.6 --resilience 0.7 --throughput 0.7 --focus 0.8 --friction 0.2 --velocity 0.6
           smoke-venv/bin/ucf --database smoke.db status --json
+          smoke-venv/bin/ucf --database smoke.db export --format scores --output scores.jsonl
+          smoke-venv/bin/python -c "import json; from importlib.resources import files; rows=[json.loads(line) for line in open('scores.jsonl', encoding='utf-8')]; assert len(rows)==6; assert all(row['schema_version']=='ucf/scores/v1' for row in rows); assert files('ucf_protocol').joinpath('schemas/ucf-score-v1.schema.json').is_file()"
           smoke-venv/bin/python -c "from importlib.resources import files; assert files('ucf_protocol').joinpath('schemas/ucf-state-v1.schema.json').is_file(); assert files('ucf_protocol').joinpath('fixtures/manifest.json').is_file()"
       - name: Run the shipped examples
         run: |
           smoke-venv/bin/python examples/basic_journey.py --database example-smoke.db
           smoke-venv/bin/python examples/release_gate.py --database release-gate-smoke.db
+          smoke-venv/bin/python examples/langfuse_adapter.py

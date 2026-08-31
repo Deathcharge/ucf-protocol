@@ -1,8 +1,36 @@
 # UCF Protocol productization record
 
-Last updated: 2026-08-08
+## Score export release checks (2026-08-31)
 
-## Current repository assessment
+The full local suite passes 126 tests with 94.59% branch coverage. The added regression verifies
+that malformed correlation data leaves an existing export untouched even with `--force`, and
+cleans temporary files. Distribution CI now exercises score export from the installed wheel and
+checks that the score schema ships. Hosted checks passed on `a9ed1bc`; the following test/CI change
+must pass on its own head before merge. CodeRabbit reports that manual review is required for this
+OSS repository: its success status is a skipped review, not an approval.
+
+### Offline provider mapping verification
+
+Added `examples/langfuse_adapter.py` against Langfuse's documented `create_score` signature
+(inspected 2026-08-31). It previews calls without importing a vendor SDK or transmitting data.
+The adapter has trace/span, session, missing-target, stable-ID and score-direction tests; CI also
+runs the preview with the installed wheel. Local checks: Ruff format/lint and strict mypy pass;
+`pytest -q` passes 126 tests with 94.59% branch coverage at `e217444`. Live delivery has not been exercised and
+requires a consuming application's configured client and real project identifiers.
+
+## 2026-08-31 interoperability checkpoint
+
+PR #11 is merged at `c74dc18`; its follow-up persistence and timestamp fixes are preserved.
+Added public `score_records()` and `export --format scores`: six raw scores with stable IDs,
+direction flags, and allowlisted correlation identifiers. No external service is contacted and
+free-text context, actor labels, and unrelated metadata are not exported. Tests cover identity,
+direction, privacy filtering, invalid correlation values, detached output, and file/stdout CLI
+equivalence. The offline provider adapter is now implemented; final release audit remains. This does
+not establish live third-party interoperability or validated market demand.
+
+Last updated: 2026-08-31
+
+## Historical pre-productization assessment
 
 The repository contains useful ideas and partial implementations for six coordination-health signals, text/JSON formatting, and SQLite history. Its current release claims are not supported by the checked-in product:
 
@@ -78,7 +106,7 @@ Run on Windows with Python 3.11.9 before implementation:
 
 There were no real repository lint, format, or type-check configurations to run at baseline. The README's claimed GitHub Actions, flake8, mypy, Bandit, Safety, and Codecov pipeline was absent.
 
-## Findings and priorities
+## Historical baseline findings and priorities
 
 ### P0
 
