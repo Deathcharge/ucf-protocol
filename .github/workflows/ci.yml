@@ -61,6 +61,7 @@ jobs:
         run: |
           python -m build
           python -m twine check dist/*
+          python -c "import glob, tarfile; archive=tarfile.open(glob.glob('dist/*.tar.gz')[0]); names=archive.getnames(); assert any(n.endswith('/examples/langfuse_adapter.py') for n in names); assert any(n.endswith('/docs/API.md') for n in names)"
       - name: Install and exercise the wheel
         run: |
           python -m venv smoke-venv
